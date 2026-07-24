@@ -29,7 +29,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     isProduction: nodeEnv === 'production',
     port: num(env.PORT, 4000),
     host: env.HOST ?? '0.0.0.0',
-    corsOrigins: (env.CORS_ORIGINS ?? 'http://localhost:5173')
+    corsOrigins: (env.CORS_ORIGINS ?? 'http://localhost:5273')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
