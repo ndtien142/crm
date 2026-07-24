@@ -2,15 +2,25 @@
  * Dev seed: one branch, one account per role, and a few sample customers.
  * Idempotent — re-running after the admin exists is a no-op. Demo password for
  * every seeded account is `matkhau123`.
+ *
+ * Note: env must load before the pool is created, and ES imports are hoisted
+ * above statements — so this script builds its own pool after `loadEnv` rather
+ * than importing the shared client from `../index`.
  */
 import { config as loadEnv } from 'dotenv';
 import bcrypt from 'bcryptjs';
 import { eq, sql } from 'drizzle-orm';
-import { branches, customers, db, pool, users } from '../index';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
+import * as schema from '../schema';
+import { branches, customers, users } from '../schema';
 
 loadEnv({ path: '../../apps/server/.env' });
 
 const DEMO_PASSWORD = 'matkhau123';
+
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { schema, casing: 'snake_case' });
 
 async function main() {
   const existing = await db

@@ -4,7 +4,8 @@
  */
 
 import type { Branch, Customer, User } from '@firecare/types';
-import type { branches, customers, users } from './schema';
+// Value import (not `import type`): the table objects back the `$inferSelect` row types.
+import { branches, customers, users } from './schema';
 
 type BranchRow = typeof branches.$inferSelect;
 type UserRow = typeof users.$inferSelect;
