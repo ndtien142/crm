@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# local storage (dev file uploads)
+.storage/
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/

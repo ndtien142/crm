@@ -1,0 +1,33 @@
+{
+  "name": "firecare",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Hệ thống quản lý nội bộ cho công ty dịch vụ PCCC (đa chi nhánh)",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "server": "pnpm --filter @firecare/server dev",
+    "admin": "pnpm --filter @firecare/admin dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @firecare/db db:generate",
+    "db:migrate": "pnpm --filter @firecare/db db:migrate",
+    "db:push": "pnpm --filter @firecare/db db:push",
+    "db:studio": "pnpm --filter @firecare/db db:studio",
+    "db:extras": "pnpm --filter @firecare/db db:extras",
+    "db:seed": "pnpm --filter @firecare/db db:seed",
+    "db:setup": "pnpm --filter @firecare/db db:setup"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}

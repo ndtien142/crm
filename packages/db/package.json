@@ -1,0 +1,39 @@
+{
+  "name": "@firecare/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:extras": "tsx src/scripts/apply-sql.ts",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "db:setup": "pnpm db:migrate && pnpm db:extras && pnpm db:seed"
+  },
+  "dependencies": {
+    "@firecare/types": "workspace:*",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.2",
+    "pg": "^8.14.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.11",
+    "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.6",
+    "drizzle-kit": "^0.31.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
