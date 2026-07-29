@@ -13,6 +13,13 @@ import type {
   Branch,
   BranchRepository,
   BranchScope,
+  CareInteraction,
+  CareInteractionListQuery,
+  CareInteractionRepository,
+  CareTask,
+  CareTaskListQuery,
+  CareTaskRepository,
+  CareTaskType,
   ChecklistTemplate,
   ChecklistTemplateRepository,
   Customer,
@@ -26,6 +33,8 @@ import type {
   InspectionRepository,
   NewAsset,
   NewBranch,
+  NewCareInteraction,
+  NewCareTask,
   NewChecklistTemplate,
   NewCustomer,
   NewFault,
@@ -53,6 +62,7 @@ import type {
   SiteRepository,
   UpdateAsset,
   UpdateBranch,
+  UpdateCareTask,
   UpdateChecklistTemplate,
   UpdateCustomer,
   UpdateFault,
@@ -788,7 +798,8 @@ class MockServiceOrderRepository implements ServiceOrderRepository {
           inBranch(o.branchId, query.scope) &&
           (!query.customerId || o.customerId === query.customerId) &&
           (!query.status || o.status === query.status) &&
-          (!query.paymentStatus || o.paymentStatus === query.paymentStatus),
+          (!query.paymentStatus || o.paymentStatus === query.paymentStatus) &&
+          (!query.dueBefore || (o.nextDueDate != null && o.nextDueDate <= query.dueBefore)),
       )
       .sort((a, b) =>
         query.sort === 'due'
@@ -896,6 +907,139 @@ class MockServiceOrderRepository implements ServiceOrderRepository {
   }
 }
 
+const OPEN_CARE_STATUSES = new Set(['todo', 'contacting', 'scheduled', 'in_progress']);
+
+class MockCareTaskRepository implements CareTaskRepository {
+  constructor(private readonly store: CareTask[]) {}
+
+  async list(query: CareTaskListQuery): Promise<Paginated<CareTask>> {
+    const filtered = this.store
+      .filter(
+        (t) =>
+          inBranch(t.branchId, query.scope) &&
+          (!query.status || t.status === query.status) &&
+          (!query.type || t.type === query.type) &&
+          (!query.priority || t.priority === query.priority) &&
+          (!query.customerId || t.customerId === query.customerId) &&
+          (!query.assigneeId || t.assigneeId === query.assigneeId) &&
+          (!query.unassignedOnly || t.assigneeId === null),
+      )
+      .sort((a, b) =>
+        query.sort === 'recent'
+          ? b.createdAt.localeCompare(a.createdAt)
+          : query.sort === 'due'
+            ? (a.dueDate ?? '9999-99-99').localeCompare(b.dueDate ?? '9999-99-99')
+            : a.position - b.position || b.createdAt.localeCompare(a.createdAt),
+      );
+    return paginate(filtered, query);
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<CareTask | null> {
+    const t = this.store.find((x) => x.id === id);
+    return t && inBranch(t.branchId, scope) ? t : null;
+  }
+
+  async create(input: NewCareTask): Promise<CareTask> {
+    const t: CareTask = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      customerId: input.customerId,
+      title: input.title,
+      type: input.type,
+      status: input.status ?? 'todo',
+      priority: input.priority ?? 'normal',
+      assigneeId: input.assigneeId ?? null,
+      dueDate: input.dueDate ?? null,
+      relatedOrderId: input.relatedOrderId ?? null,
+      sourceLineId: input.sourceLineId ?? null,
+      reminderStage: input.reminderStage ?? 0,
+      nextFollowUpAt: input.nextFollowUpAt ?? null,
+      slaDueAt: input.slaDueAt ?? null,
+      position: 0,
+      notes: input.notes ?? null,
+      createdById: input.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(t);
+    return t;
+  }
+
+  async update(id: string, patch: UpdateCareTask, scope: BranchScope): Promise<CareTask | null> {
+    const t = this.store.find((x) => x.id === id);
+    if (!t || !inBranch(t.branchId, scope)) return null;
+    Object.assign(t, patch, { updatedAt: now() });
+    return t;
+  }
+
+  async claim(id: string, userId: string, scope: BranchScope): Promise<CareTask | null> {
+    const t = this.store.find((x) => x.id === id);
+    if (!t || !inBranch(t.branchId, scope) || t.assigneeId !== null) return null;
+    t.assigneeId = userId;
+    t.updatedAt = now();
+    return t;
+  }
+
+  async release(id: string, scope: BranchScope): Promise<CareTask | null> {
+    const t = this.store.find((x) => x.id === id);
+    if (!t || !inBranch(t.branchId, scope)) return null;
+    t.assigneeId = null;
+    t.updatedAt = now();
+    return t;
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+
+  async hasTaskForOrder(orderId: string, type: CareTaskType, openOnly: boolean): Promise<boolean> {
+    return this.store.some(
+      (t) =>
+        t.relatedOrderId === orderId &&
+        t.type === type &&
+        (!openOnly || OPEN_CARE_STATUSES.has(t.status)),
+    );
+  }
+}
+
+class MockCareInteractionRepository implements CareInteractionRepository {
+  constructor(private readonly store: CareInteraction[]) {}
+
+  async list(query: CareInteractionListQuery): Promise<Paginated<CareInteraction>> {
+    const filtered = this.store
+      .filter(
+        (r) =>
+          inBranch(r.branchId, query.scope) &&
+          (!query.customerId || r.customerId === query.customerId) &&
+          (!query.careTaskId || r.careTaskId === query.careTaskId),
+      )
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+    return paginate(filtered, query);
+  }
+
+  async create(input: NewCareInteraction): Promise<CareInteraction> {
+    const r: CareInteraction = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      customerId: input.customerId,
+      careTaskId: input.careTaskId ?? null,
+      channel: input.channel,
+      direction: input.direction ?? 'outbound',
+      disposition: input.disposition,
+      summary: input.summary,
+      nextFollowUpAt: input.nextFollowUpAt ?? null,
+      actorId: input.actorId ?? null,
+      occurredAt: input.occurredAt ?? now(),
+      createdAt: now(),
+    };
+    this.store.push(r);
+    return r;
+  }
+}
+
 /** Build a fresh mock bundle. Pass seed data for tests. */
 export function createMockRepositories(seed?: {
   users?: (User & { passwordHash: string })[];
@@ -907,6 +1051,8 @@ export function createMockRepositories(seed?: {
   inspections?: Inspection[];
   faults?: Fault[];
   serviceCatalog?: ServiceCatalogItem[];
+  careTasks?: CareTask[];
+  careInteractions?: CareInteraction[];
   serviceOrders?: ServiceOrder[];
 }): RepositoryBundle {
   return {
@@ -921,5 +1067,7 @@ export function createMockRepositories(seed?: {
     faults: new MockFaultRepository(seed?.faults ?? []),
     serviceCatalog: new MockServiceCatalogRepository(seed?.serviceCatalog ?? []),
     serviceOrders: new MockServiceOrderRepository(seed?.serviceOrders ?? [], []),
+    careTasks: new MockCareTaskRepository(seed?.careTasks ?? []),
+    careInteractions: new MockCareInteractionRepository(seed?.careInteractions ?? []),
   };
 }

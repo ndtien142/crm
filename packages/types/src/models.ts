@@ -304,3 +304,72 @@ export interface ServiceOrder {
   /** Populated by findById; omitted from list rows. */
   lines?: ServiceOrderLine[];
 }
+
+// ── Customer care (P6): Kanban tasks + interaction log ──────────────────────
+
+export type CareTaskType =
+  | 're_service_due' // đến hạn tái dịch vụ (sinh tự động)
+  | 'csat' // khảo sát hài lòng sau dịch vụ
+  | 'warranty' // bảo hành / hậu mãi
+  | 'complaint' // khiếu nại (ưu tiên cao, SLA riêng)
+  | 'followup' // theo dõi
+  | 'upsell' // gợi ý thêm dịch vụ
+  | 'new_lead' // khách mới
+  | 'quote' // báo giá
+  | 'other';
+
+/** Kanban columns, left → right. */
+export type CareTaskStatus = 'todo' | 'contacting' | 'scheduled' | 'in_progress' | 'done' | 'lost';
+export type CarePriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface CareTask {
+  id: string;
+  branchId: string;
+  customerId: string;
+  title: string;
+  type: CareTaskType;
+  status: CareTaskStatus;
+  priority: CarePriority;
+  /** null = in the branch pool, waiting to be claimed. */
+  assigneeId: string | null;
+  dueDate: string | null;
+  relatedOrderId: string | null;
+  /** Idempotency handle for the re-service sweep (order the task was raised for). */
+  sourceLineId: string | null;
+  reminderStage: number;
+  nextFollowUpAt: string | null;
+  slaDueAt: string | null;
+  /** Sort key within a Kanban column. */
+  position: number;
+  notes: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CareChannel = 'call' | 'zalo' | 'sms' | 'email' | 'visit' | 'other';
+export type CareDirection = 'outbound' | 'inbound';
+export type CareDisposition =
+  | 'connected'
+  | 'no_answer'
+  | 'callback'
+  | 'agreed'
+  | 'refused'
+  | 'resolved'
+  | 'other';
+
+/** One touch with a customer — the "sổ chăm sóc" ledger. */
+export interface CareInteraction {
+  id: string;
+  branchId: string;
+  customerId: string;
+  careTaskId: string | null;
+  channel: CareChannel;
+  direction: CareDirection;
+  disposition: CareDisposition;
+  summary: string;
+  nextFollowUpAt: string | null;
+  actorId: string | null;
+  occurredAt: string;
+  createdAt: string;
+}

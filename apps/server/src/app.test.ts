@@ -5,11 +5,12 @@
  */
 
 import { createMockRepositories } from '@firecare/core';
-import type { Asset, Branch, Customer, Site, User } from '@firecare/types';
+import type { Asset, Branch, Customer, ServiceOrder, Site, User } from '@firecare/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app';
 import { runInspectionSweep } from './lib/inspection-sweep';
+import { runReserviceSweep } from './lib/reservice-sweep';
 import type { AppConfig } from './config';
 import { hashPassword } from './lib/password';
 
@@ -615,5 +616,147 @@ describe('service orders (P5)', () => {
       payload: { customerId: CUST_A, lines: [{ description: 'x', quantity: 1, unitPrice: 1 }] },
     });
     expect(r.statusCode).toBe(403);
+  });
+});
+
+describe('customer care (P6)', () => {
+  it('staff creates a care task (branch derived from customer); accountant cannot', async () => {
+    const staff = await token('staff@f.local');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/care-tasks',
+      headers: bearer(staff),
+      payload: { customerId: CUST_A, title: 'Gọi lại khách', type: 'followup' },
+    });
+    expect(res.statusCode).toBe(201);
+    const task = JSON.parse(res.body).data;
+    expect(task.branchId).toBe(BRANCH_A);
+    expect(task.status).toBe('todo');
+    expect(task.assigneeId).toBeNull();
+
+    const acc = await token('acc@f.local');
+    const denied = await app.inject({
+      method: 'POST',
+      url: '/api/care-tasks',
+      headers: bearer(acc),
+      payload: { customerId: CUST_A, title: 'x', type: 'followup' },
+    });
+    expect(denied.statusCode).toBe(403);
+  });
+
+  it('claim is atomic: first claimer wins, a second claim gets 409', async () => {
+    const admin = await token('admin@f.local');
+    const created = JSON.parse(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/care-tasks',
+          headers: bearer(admin),
+          payload: { customerId: CUST_A, title: 'Thẻ pool', type: 'new_lead' },
+        })
+      ).body,
+    ).data;
+
+    const staff = await token('staff@f.local');
+    const first = await app.inject({
+      method: 'POST',
+      url: `/api/care-tasks/${created.id}/claim`,
+      headers: bearer(staff),
+    });
+    expect(first.statusCode).toBe(200);
+    expect(JSON.parse(first.body).data.assigneeId).toBe('u-staff');
+
+    const second = await app.inject({
+      method: 'POST',
+      url: `/api/care-tasks/${created.id}/claim`,
+      headers: bearer(admin),
+    });
+    expect(second.statusCode).toBe(409);
+  });
+
+  it('logging a refusal marks the linked task lost (churn signal)', async () => {
+    const staff = await token('staff@f.local');
+    const task = JSON.parse(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/care-tasks',
+          headers: bearer(staff),
+          payload: { customerId: CUST_A, title: 'Chào lại', type: 're_service_due' },
+        })
+      ).body,
+    ).data;
+
+    const logged = await app.inject({
+      method: 'POST',
+      url: '/api/care-interactions',
+      headers: bearer(staff),
+      payload: { customerId: CUST_A, careTaskId: task.id, channel: 'call', disposition: 'refused', summary: 'Khách từ chối' },
+    });
+    expect(logged.statusCode).toBe(201);
+
+    const after = JSON.parse(
+      (await app.inject({ method: 'GET', url: `/api/care-tasks/${task.id}`, headers: bearer(staff) })).body,
+    ).data;
+    expect(after.status).toBe('lost');
+  });
+
+  it('staff only sees their own branch on the board', async () => {
+    const admin = await token('admin@f.local');
+    // Admin can create against BRANCH_B via CUST_B.
+    await app.inject({
+      method: 'POST',
+      url: '/api/care-tasks',
+      headers: bearer(admin),
+      payload: { customerId: CUST_B, title: 'Thẻ chi nhánh B', type: 'followup' },
+    });
+    const staff = await token('staff@f.local');
+    const list = JSON.parse(
+      (await app.inject({ method: 'GET', url: '/api/care-tasks?pageSize=100', headers: bearer(staff) })).body,
+    );
+    expect(list.data.every((t: { branchId: string }) => t.branchId === BRANCH_A)).toBe(true);
+  });
+
+  it('re-service sweep creates one urgent task for an overdue order and is idempotent', async () => {
+    const ts = '2026-01-01T00:00:00.000Z';
+    const order: ServiceOrder = {
+      id: 'order-due-1',
+      branchId: BRANCH_A,
+      customerId: CUST_A,
+      siteId: null,
+      code: 'PDV-OVERDUE',
+      status: 'done',
+      scheduledAt: null,
+      performedAt: '2025-01-01',
+      performedById: null,
+      totalAmount: 250000,
+      paymentStatus: 'paid',
+      paidAmount: 250000,
+      nextDueDate: '2026-01-01', // in the past → overdue
+      notes: null,
+      createdById: null,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    const repos = createMockRepositories({
+      branches: [branch(BRANCH_A, 'CN1', 'Chi nhánh A')],
+      customers: [customer(CUST_A, BRANCH_A, 'Khách A', '0900000001')],
+      serviceOrders: [order],
+    });
+
+    const scope = { allBranches: true as const };
+    const first = await runReserviceSweep(repos, 30);
+    expect(first.created).toBe(1);
+    const afterFirst = await repos.careTasks.list({ page: 1, pageSize: 100, scope });
+    expect(afterFirst.total).toBe(1);
+    expect(afterFirst.items[0]!.type).toBe('re_service_due');
+    expect(afterFirst.items[0]!.priority).toBe('urgent');
+    expect(afterFirst.items[0]!.relatedOrderId).toBe('order-due-1');
+
+    // Second pass must not duplicate the still-open reminder.
+    const second = await runReserviceSweep(repos, 30);
+    expect(second.created).toBe(0);
+    const afterSecond = await repos.careTasks.list({ page: 1, pageSize: 100, scope });
+    expect(afterSecond.total).toBe(1);
   });
 });

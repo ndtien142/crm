@@ -6,6 +6,8 @@
 import type {
   Asset,
   Branch,
+  CareInteraction,
+  CareTask,
   ChecklistTemplate,
   Customer,
   Fault,
@@ -20,6 +22,8 @@ import type {
 import {
   assets,
   branches,
+  careInteractions,
+  careTasks,
   checklistTemplates,
   customers,
   faults,
@@ -266,5 +270,49 @@ export function toServiceOrder(row: ServiceOrderRow, lines?: ServiceOrderLine[])
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     ...(lines ? { lines } : {}),
+  };
+}
+
+type CareTaskRow = typeof careTasks.$inferSelect;
+type CareInteractionRow = typeof careInteractions.$inferSelect;
+
+export function toCareTask(row: CareTaskRow): CareTask {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    customerId: row.customerId,
+    title: row.title,
+    type: row.type,
+    status: row.status,
+    priority: row.priority,
+    assigneeId: row.assigneeId,
+    dueDate: row.dueDate,
+    relatedOrderId: row.relatedOrderId,
+    sourceLineId: row.sourceLineId,
+    reminderStage: row.reminderStage,
+    nextFollowUpAt: row.nextFollowUpAt,
+    slaDueAt: row.slaDueAt,
+    position: row.position,
+    notes: row.notes,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function toCareInteraction(row: CareInteractionRow): CareInteraction {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    customerId: row.customerId,
+    careTaskId: row.careTaskId,
+    channel: row.channel,
+    direction: row.direction,
+    disposition: row.disposition,
+    summary: row.summary,
+    nextFollowUpAt: row.nextFollowUpAt,
+    actorId: row.actorId,
+    occurredAt: row.occurredAt,
+    createdAt: row.createdAt,
   };
 }

@@ -9,6 +9,14 @@ import type {
   AssetCategory,
   AssetStatus,
   Branch,
+  CareChannel,
+  CareDirection,
+  CareDisposition,
+  CareInteraction,
+  CarePriority,
+  CareTask,
+  CareTaskStatus,
+  CareTaskType,
   ChecklistItem,
   ChecklistTemplate,
   Customer,
@@ -445,6 +453,8 @@ export interface ServiceOrderListQuery extends PageQuery {
   customerId?: string;
   status?: ServiceOrderStatus;
   paymentStatus?: PaymentStatus;
+  /** ISO date — orders whose nextDueDate is on/before this (feeds re-service sweep). */
+  dueBefore?: string;
   sort?: 'recent' | 'due';
 }
 
@@ -468,6 +478,92 @@ export interface ServiceOrderRepository {
   delete(id: string, scope: BranchScope): Promise<boolean>;
 }
 
+// ── Customer care: Kanban tasks (P6) ────────────────────────────────────────
+
+export interface NewCareTask {
+  branchId: string;
+  customerId: string;
+  title: string;
+  type: CareTaskType;
+  status?: CareTaskStatus;
+  priority?: CarePriority;
+  assigneeId?: string | null;
+  dueDate?: string | null;
+  relatedOrderId?: string | null;
+  sourceLineId?: string | null;
+  reminderStage?: number;
+  nextFollowUpAt?: string | null;
+  slaDueAt?: string | null;
+  notes?: string | null;
+  createdById?: string | null;
+}
+
+export type UpdateCareTask = Partial<
+  Pick<
+    NewCareTask,
+    | 'title'
+    | 'status'
+    | 'priority'
+    | 'assigneeId'
+    | 'dueDate'
+    | 'nextFollowUpAt'
+    | 'reminderStage'
+    | 'notes'
+  >
+> & { position?: number };
+
+export interface CareTaskListQuery extends PageQuery {
+  scope: BranchScope;
+  status?: CareTaskStatus;
+  type?: CareTaskType;
+  priority?: CarePriority;
+  assigneeId?: string;
+  customerId?: string;
+  /** Pool view — only unclaimed tasks. */
+  unassignedOnly?: boolean;
+  sort?: 'position' | 'recent' | 'due';
+}
+
+export interface CareTaskRepository {
+  list(query: CareTaskListQuery): Promise<Paginated<CareTask>>;
+  findById(id: string, scope: BranchScope): Promise<CareTask | null>;
+  create(input: NewCareTask): Promise<CareTask>;
+  update(id: string, patch: UpdateCareTask, scope: BranchScope): Promise<CareTask | null>;
+  /** Atomically claim from the pool — succeeds only if still unassigned. */
+  claim(id: string, userId: string, scope: BranchScope): Promise<CareTask | null>;
+  /** Return to the pool. */
+  release(id: string, scope: BranchScope): Promise<CareTask | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+  /** Sweep idempotency: is there already a task of this type for the order? */
+  hasTaskForOrder(orderId: string, type: CareTaskType, openOnly: boolean): Promise<boolean>;
+}
+
+// ── Customer care: interaction log ──────────────────────────────────────────
+
+export interface NewCareInteraction {
+  branchId: string;
+  customerId: string;
+  careTaskId?: string | null;
+  channel: CareChannel;
+  direction?: CareDirection;
+  disposition: CareDisposition;
+  summary: string;
+  nextFollowUpAt?: string | null;
+  actorId?: string | null;
+  occurredAt?: string;
+}
+
+export interface CareInteractionListQuery extends PageQuery {
+  scope: BranchScope;
+  customerId?: string;
+  careTaskId?: string;
+}
+
+export interface CareInteractionRepository {
+  list(query: CareInteractionListQuery): Promise<Paginated<CareInteraction>>;
+  create(input: NewCareInteraction): Promise<CareInteraction>;
+}
+
 // ── The bundle ──────────────────────────────────────────────────────────────
 
 export interface RepositoryBundle {
@@ -482,4 +578,6 @@ export interface RepositoryBundle {
   faults: FaultRepository;
   serviceCatalog: ServiceCatalogRepository;
   serviceOrders: ServiceOrderRepository;
+  careTasks: CareTaskRepository;
+  careInteractions: CareInteractionRepository;
 }

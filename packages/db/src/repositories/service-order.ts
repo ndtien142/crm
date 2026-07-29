@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, lte, sql, type SQL } from 'drizzle-orm';
 import type {
   BranchScope,
   NewServiceOrder,
@@ -40,6 +40,7 @@ export class DrizzleServiceOrderRepository implements ServiceOrderRepository {
     if (query.customerId) conds.push(eq(serviceOrders.customerId, query.customerId));
     if (query.status) conds.push(eq(serviceOrders.status, query.status));
     if (query.paymentStatus) conds.push(eq(serviceOrders.paymentStatus, query.paymentStatus));
+    if (query.dueBefore) conds.push(lte(serviceOrders.nextDueDate, query.dueBefore));
     const where = conds.length ? and(...conds) : undefined;
     const order = query.sort === 'due' ? asc(serviceOrders.nextDueDate) : desc(serviceOrders.createdAt);
 

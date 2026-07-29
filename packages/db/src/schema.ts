@@ -466,3 +466,110 @@ export const serviceOrderLines = pgTable(
   },
   (t) => [index('service_order_lines_order_idx').on(t.orderId)],
 );
+
+// ── Customer care (P6): Kanban tasks + interaction log ──────────────────────
+
+export const careTaskTypeEnum = pgEnum('care_task_type', [
+  're_service_due',
+  'csat',
+  'warranty',
+  'complaint',
+  'followup',
+  'upsell',
+  'new_lead',
+  'quote',
+  'other',
+]);
+export const careTaskStatusEnum = pgEnum('care_task_status', [
+  'todo',
+  'contacting',
+  'scheduled',
+  'in_progress',
+  'done',
+  'lost',
+]);
+export const carePriorityEnum = pgEnum('care_priority', ['low', 'normal', 'high', 'urgent']);
+export const careChannelEnum = pgEnum('care_channel', [
+  'call',
+  'zalo',
+  'sms',
+  'email',
+  'visit',
+  'other',
+]);
+export const careDirectionEnum = pgEnum('care_direction', ['outbound', 'inbound']);
+export const careDispositionEnum = pgEnum('care_disposition', [
+  'connected',
+  'no_answer',
+  'callback',
+  'agreed',
+  'refused',
+  'resolved',
+  'other',
+]);
+
+export const careTasks = pgTable(
+  'care_tasks',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    type: careTaskTypeEnum('type').notNull().default('followup'),
+    status: careTaskStatusEnum('status').notNull().default('todo'),
+    priority: carePriorityEnum('priority').notNull().default('normal'),
+    assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    dueDate: date('due_date', { mode: 'string' }),
+    relatedOrderId: uuid('related_order_id').references(() => serviceOrders.id, {
+      onDelete: 'set null',
+    }),
+    sourceLineId: uuid('source_line_id'),
+    reminderStage: integer('reminder_stage').notNull().default(0),
+    nextFollowUpAt: date('next_follow_up_at', { mode: 'string' }),
+    slaDueAt: timestamp('sla_due_at', { withTimezone: true, mode: 'string' }),
+    position: doublePrecision('position').notNull().default(0),
+    notes: text('notes'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('care_tasks_branch_status_idx').on(t.branchId, t.status),
+    index('care_tasks_assignee_idx').on(t.assigneeId),
+    index('care_tasks_customer_idx').on(t.customerId),
+    index('care_tasks_related_order_idx').on(t.relatedOrderId),
+  ],
+);
+
+export const careInteractions = pgTable(
+  'care_interactions',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    careTaskId: uuid('care_task_id').references(() => careTasks.id, { onDelete: 'set null' }),
+    channel: careChannelEnum('channel').notNull().default('call'),
+    direction: careDirectionEnum('direction').notNull().default('outbound'),
+    disposition: careDispositionEnum('disposition').notNull().default('connected'),
+    summary: text('summary').notNull(),
+    nextFollowUpAt: date('next_follow_up_at', { mode: 'string' }),
+    actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index('care_interactions_customer_idx').on(t.customerId),
+    index('care_interactions_task_idx').on(t.careTaskId),
+  ],
+);

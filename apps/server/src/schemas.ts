@@ -439,3 +439,84 @@ export const paymentServiceOrderSchema = z.object({
   paymentStatus: paymentStatusSchema,
   paidAmount: z.number().min(0),
 });
+
+// ── Customer care (P6) ──────────────────────────────────────────────────────
+
+const careTaskTypeSchema = z.enum([
+  're_service_due',
+  'csat',
+  'warranty',
+  'complaint',
+  'followup',
+  'upsell',
+  'new_lead',
+  'quote',
+  'other',
+]);
+const careTaskStatusSchema = z.enum([
+  'todo',
+  'contacting',
+  'scheduled',
+  'in_progress',
+  'done',
+  'lost',
+]);
+const carePrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+const careChannelSchema = z.enum(['call', 'zalo', 'sms', 'email', 'visit', 'other']);
+const careDirectionSchema = z.enum(['outbound', 'inbound']);
+const careDispositionSchema = z.enum([
+  'connected',
+  'no_answer',
+  'callback',
+  'agreed',
+  'refused',
+  'resolved',
+  'other',
+]);
+
+export const careTaskQuerySchema = pageQuerySchema.extend({
+  status: careTaskStatusSchema.optional(),
+  type: careTaskTypeSchema.optional(),
+  priority: carePrioritySchema.optional(),
+  assigneeId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  unassignedOnly: z.coerce.boolean().optional(),
+  sort: z.enum(['position', 'recent', 'due']).optional(),
+});
+
+export const createCareTaskSchema = z.object({
+  customerId: z.string().uuid(),
+  title: z.string().trim().min(1),
+  type: careTaskTypeSchema.default('followup'),
+  priority: carePrioritySchema.optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+  dueDate: dateStr.nullable().optional(),
+  relatedOrderId: z.string().uuid().nullable().optional(),
+  notes: z.string().trim().optional(),
+});
+
+export const updateCareTaskSchema = z.object({
+  title: z.string().trim().min(1).optional(),
+  status: careTaskStatusSchema.optional(),
+  priority: carePrioritySchema.optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+  dueDate: dateStr.nullable().optional(),
+  nextFollowUpAt: dateStr.nullable().optional(),
+  notes: z.string().trim().nullable().optional(),
+  position: z.number().optional(),
+});
+
+export const careInteractionQuerySchema = pageQuerySchema.extend({
+  customerId: z.string().uuid().optional(),
+  careTaskId: z.string().uuid().optional(),
+});
+
+export const createCareInteractionSchema = z.object({
+  customerId: z.string().uuid(),
+  careTaskId: z.string().uuid().nullable().optional(),
+  channel: careChannelSchema.default('call'),
+  direction: careDirectionSchema.optional(),
+  disposition: careDispositionSchema.default('connected'),
+  summary: z.string().trim().min(1),
+  nextFollowUpAt: dateStr.nullable().optional(),
+});

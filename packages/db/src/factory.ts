@@ -3,6 +3,8 @@ import type { Db } from './index';
 import { DrizzleAssetRepository } from './repositories/asset';
 import { DrizzleAuthRepository } from './repositories/auth';
 import { DrizzleBranchRepository } from './repositories/branch';
+import { DrizzleCareInteractionRepository } from './repositories/care-interaction';
+import { DrizzleCareTaskRepository } from './repositories/care-task';
 import { DrizzleChecklistTemplateRepository } from './repositories/checklist-template';
 import { DrizzleCustomerRepository } from './repositories/customer';
 import { DrizzleFaultRepository } from './repositories/fault';
@@ -26,5 +28,7 @@ export function createDrizzleRepositories(db: Db): RepositoryBundle {
     faults: new DrizzleFaultRepository(db),
     serviceCatalog: new DrizzleServiceCatalogRepository(db),
     serviceOrders: new DrizzleServiceOrderRepository(db),
+    careTasks: new DrizzleCareTaskRepository(db),
+    careInteractions: new DrizzleCareInteractionRepository(db),
   };
 }
