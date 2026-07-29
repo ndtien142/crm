@@ -21,16 +21,19 @@ import { registerCustomerRoutes } from './routes/customers';
 import { registerHealthRoutes } from './routes/health';
 import { registerUserRoutes } from './routes/users';
 
-export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
+/** `deps.repos` lets tests inject a seeded in-memory bundle (no DB, no network). */
+export async function buildApp(
+  config: AppConfig,
+  deps?: { repos?: RepositoryBundle },
+): Promise<FastifyInstance> {
   const app = Fastify({ logger: { level: config.logLevel } });
 
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, { origin: config.corsOrigins, credentials: true });
   await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
 
-  const repos: RepositoryBundle = config.databaseUrl
-    ? createDrizzleRepositories(db)
-    : createMockRepositories();
+  const repos: RepositoryBundle =
+    deps?.repos ?? (config.databaseUrl ? createDrizzleRepositories(db) : createMockRepositories());
   const tokens = createTokenService(config.jwt.secret, {
     accessTtlSeconds: config.jwt.accessTtlSeconds,
   });
