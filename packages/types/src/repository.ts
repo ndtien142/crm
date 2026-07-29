@@ -24,7 +24,12 @@ import type {
   InspectionResultItem,
   InspectionStatus,
   InspectionType,
+  PaymentStatus,
   Role,
+  ServiceCatalogItem,
+  ServiceCategory,
+  ServiceOrder,
+  ServiceOrderStatus,
   Site,
   SiteType,
   User,
@@ -388,6 +393,81 @@ export interface FaultRepository {
   delete(id: string, scope: BranchScope): Promise<boolean>;
 }
 
+// ── Service catalog (company-wide) ──────────────────────────────────────────
+
+export interface NewServiceCatalogItem {
+  code?: string | null;
+  name: string;
+  category: ServiceCategory;
+  defaultCycleMonths?: number | null;
+  unit?: string | null;
+  unitPrice: number;
+  isActive?: boolean;
+}
+
+export type UpdateServiceCatalogItem = Partial<NewServiceCatalogItem>;
+
+export interface ServiceCatalogRepository {
+  list(query: { category?: ServiceCategory; includeInactive?: boolean }): Promise<ServiceCatalogItem[]>;
+  findById(id: string): Promise<ServiceCatalogItem | null>;
+  create(input: NewServiceCatalogItem): Promise<ServiceCatalogItem>;
+  update(id: string, patch: UpdateServiceCatalogItem): Promise<ServiceCatalogItem | null>;
+  delete(id: string): Promise<boolean>;
+}
+
+// ── Service orders (phiếu dịch vụ) ──────────────────────────────────────────
+
+export interface NewServiceOrderLine {
+  serviceId?: string | null;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  cycleMonths?: number | null;
+}
+
+export interface NewServiceOrder {
+  branchId: string;
+  customerId: string;
+  siteId?: string | null;
+  code?: string;
+  status?: ServiceOrderStatus;
+  scheduledAt?: string | null;
+  notes?: string | null;
+  createdById?: string | null;
+}
+
+export type UpdateServiceOrder = Partial<
+  Pick<NewServiceOrder, 'status' | 'scheduledAt' | 'notes' | 'siteId'>
+>;
+
+export interface ServiceOrderListQuery extends PageQuery {
+  scope: BranchScope;
+  customerId?: string;
+  status?: ServiceOrderStatus;
+  paymentStatus?: PaymentStatus;
+  sort?: 'recent' | 'due';
+}
+
+export interface ServiceOrderRepository {
+  list(query: ServiceOrderListQuery): Promise<Paginated<ServiceOrder>>;
+  /** Returns the order with its `lines` populated. */
+  findById(id: string, scope: BranchScope): Promise<ServiceOrder | null>;
+  create(order: NewServiceOrder, lines: NewServiceOrderLine[]): Promise<ServiceOrder>;
+  update(id: string, patch: UpdateServiceOrder, scope: BranchScope): Promise<ServiceOrder | null>;
+  /** Mark done: stamp performedAt, roll each line's due date + the order's nextDueDate. */
+  complete(
+    id: string,
+    input: { performedAt: string; performedById?: string | null },
+    scope: BranchScope,
+  ): Promise<ServiceOrder | null>;
+  setPayment(
+    id: string,
+    input: { paymentStatus: PaymentStatus; paidAmount: number },
+    scope: BranchScope,
+  ): Promise<ServiceOrder | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+}
+
 // ── The bundle ──────────────────────────────────────────────────────────────
 
 export interface RepositoryBundle {
@@ -400,4 +480,6 @@ export interface RepositoryBundle {
   checklistTemplates: ChecklistTemplateRepository;
   inspections: InspectionRepository;
   faults: FaultRepository;
+  serviceCatalog: ServiceCatalogRepository;
+  serviceOrders: ServiceOrderRepository;
 }

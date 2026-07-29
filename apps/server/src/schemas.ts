@@ -366,3 +366,76 @@ export const resolveFaultSchema = z.object({
   resolutionNote: z.string().trim().optional(),
   resolvedDate: dateStr.optional(),
 });
+
+// ── Service catalog & orders (P5) ────────────────────────────────────────────
+
+const serviceCategorySchema = z.enum([
+  'refill_replace',
+  'maintenance',
+  'recharge',
+  'inspection',
+  'install',
+  'training',
+  'other',
+]);
+const serviceOrderStatusSchema = z.enum(['draft', 'scheduled', 'in_progress', 'done', 'canceled']);
+const paymentStatusSchema = z.enum(['unpaid', 'partial', 'paid']);
+
+export const serviceCatalogQuerySchema = z.object({
+  category: serviceCategorySchema.optional(),
+  includeInactive: z.coerce.boolean().optional(),
+});
+
+export const createServiceCatalogSchema = z.object({
+  code: z.string().trim().optional(),
+  name: z.string().trim().min(1),
+  category: serviceCategorySchema.default('refill_replace'),
+  defaultCycleMonths: z.number().int().min(0).nullable().optional(),
+  unit: z.string().trim().optional(),
+  unitPrice: z.number().min(0),
+  isActive: z.boolean().optional(),
+});
+
+export const updateServiceCatalogSchema = createServiceCatalogSchema.partial();
+
+export const serviceOrderQuerySchema = pageQuerySchema.extend({
+  customerId: z.string().uuid().optional(),
+  status: serviceOrderStatusSchema.optional(),
+  paymentStatus: paymentStatusSchema.optional(),
+  sort: z.enum(['recent', 'due']).optional(),
+});
+
+const orderLineSchema = z.object({
+  serviceId: z.string().uuid().nullable().optional(),
+  description: z.string().trim().min(1),
+  quantity: z.number().min(0).default(1),
+  unitPrice: z.number().min(0).default(0),
+  cycleMonths: z.number().int().min(0).nullable().optional(),
+});
+
+export const createServiceOrderSchema = z.object({
+  // Branch is derived from the customer.
+  customerId: z.string().uuid(),
+  siteId: z.string().uuid().nullable().optional(),
+  status: serviceOrderStatusSchema.optional(),
+  scheduledAt: dateStr.optional(),
+  notes: z.string().trim().optional(),
+  lines: z.array(orderLineSchema).min(1),
+});
+
+export const updateServiceOrderSchema = z.object({
+  status: serviceOrderStatusSchema.optional(),
+  scheduledAt: dateStr.nullable().optional(),
+  notes: z.string().trim().nullable().optional(),
+  siteId: z.string().uuid().nullable().optional(),
+});
+
+export const completeServiceOrderSchema = z.object({
+  performedAt: dateStr.optional(),
+  performedById: z.string().uuid().nullable().optional(),
+});
+
+export const paymentServiceOrderSchema = z.object({
+  paymentStatus: paymentStatusSchema,
+  paidAmount: z.number().min(0),
+});

@@ -11,6 +11,7 @@ import {
   date,
   doublePrecision,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -380,4 +381,88 @@ export const faults = pgTable(
     index('faults_asset_idx').on(t.assetId),
     index('faults_status_idx').on(t.status),
   ],
+);
+
+// ── Service catalog & orders (P5) ───────────────────────────────────────────
+
+export const serviceCategoryEnum = pgEnum('service_category', [
+  'refill_replace',
+  'maintenance',
+  'recharge',
+  'inspection',
+  'install',
+  'training',
+  'other',
+]);
+
+export const serviceOrderStatusEnum = pgEnum('service_order_status', [
+  'draft',
+  'scheduled',
+  'in_progress',
+  'done',
+  'canceled',
+]);
+
+export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partial', 'paid']);
+
+export const serviceCatalog = pgTable('service_catalog', {
+  id,
+  code: text('code'),
+  name: text('name').notNull(),
+  category: serviceCategoryEnum('category').notNull().default('refill_replace'),
+  defaultCycleMonths: integer('default_cycle_months'),
+  unit: text('unit'),
+  unitPrice: doublePrecision('unit_price').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  ...timestamps,
+});
+
+export const serviceOrders = pgTable(
+  'service_orders',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+    code: text('code').notNull(),
+    status: serviceOrderStatusEnum('status').notNull().default('draft'),
+    scheduledAt: date('scheduled_at', { mode: 'string' }),
+    performedAt: date('performed_at', { mode: 'string' }),
+    performedById: uuid('performed_by_id').references(() => users.id, { onDelete: 'set null' }),
+    totalAmount: doublePrecision('total_amount').notNull().default(0),
+    paymentStatus: paymentStatusEnum('payment_status').notNull().default('unpaid'),
+    paidAmount: doublePrecision('paid_amount').notNull().default(0),
+    nextDueDate: date('next_due_date', { mode: 'string' }),
+    notes: text('notes'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('service_orders_branch_idx').on(t.branchId),
+    index('service_orders_customer_idx').on(t.customerId),
+    index('service_orders_status_idx').on(t.status),
+    index('service_orders_next_due_idx').on(t.nextDueDate),
+  ],
+);
+
+export const serviceOrderLines = pgTable(
+  'service_order_lines',
+  {
+    id,
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => serviceOrders.id, { onDelete: 'cascade' }),
+    serviceId: uuid('service_id').references(() => serviceCatalog.id, { onDelete: 'set null' }),
+    description: text('description').notNull(),
+    quantity: doublePrecision('quantity').notNull().default(1),
+    unitPrice: doublePrecision('unit_price').notNull().default(0),
+    lineAmount: doublePrecision('line_amount').notNull().default(0),
+    cycleMonths: integer('cycle_months'),
+    lineDueDate: date('line_due_date', { mode: 'string' }),
+  },
+  (t) => [index('service_order_lines_order_idx').on(t.orderId)],
 );

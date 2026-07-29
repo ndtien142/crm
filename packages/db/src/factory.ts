@@ -7,6 +7,8 @@ import { DrizzleChecklistTemplateRepository } from './repositories/checklist-tem
 import { DrizzleCustomerRepository } from './repositories/customer';
 import { DrizzleFaultRepository } from './repositories/fault';
 import { DrizzleInspectionRepository } from './repositories/inspection';
+import { DrizzleServiceCatalogRepository } from './repositories/service-catalog';
+import { DrizzleServiceOrderRepository } from './repositories/service-order';
 import { DrizzleSiteRepository } from './repositories/site';
 import { DrizzleUserRepository } from './repositories/user';
 
@@ -22,5 +24,7 @@ export function createDrizzleRepositories(db: Db): RepositoryBundle {
     checklistTemplates: new DrizzleChecklistTemplateRepository(db),
     inspections: new DrizzleInspectionRepository(db),
     faults: new DrizzleFaultRepository(db),
+    serviceCatalog: new DrizzleServiceCatalogRepository(db),
+    serviceOrders: new DrizzleServiceOrderRepository(db),
   };
 }

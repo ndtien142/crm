@@ -241,3 +241,66 @@ export interface Fault {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Service catalog & orders / phiếu dịch vụ (P5) ────────────────────────────
+
+export type ServiceCategory =
+  | 'refill_replace' // đổi/thay bình
+  | 'maintenance' // bảo trì
+  | 'recharge' // nạp sạc
+  | 'inspection' // kiểm định (dịch vụ)
+  | 'install' // lắp đặt
+  | 'training' // tập huấn
+  | 'other';
+
+export interface ServiceCatalogItem {
+  id: string;
+  code: string | null;
+  name: string;
+  category: ServiceCategory;
+  /** Re-service interval in months (drives the order's nextDueDate). */
+  defaultCycleMonths: number | null;
+  unit: string | null;
+  unitPrice: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ServiceOrderStatus = 'draft' | 'scheduled' | 'in_progress' | 'done' | 'canceled';
+export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
+
+export interface ServiceOrderLine {
+  id: string;
+  orderId: string;
+  serviceId: string | null;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineAmount: number;
+  cycleMonths: number | null;
+  /** performedAt + cycleMonths — computed when the order is completed. */
+  lineDueDate: string | null;
+}
+
+export interface ServiceOrder {
+  id: string;
+  branchId: string;
+  customerId: string;
+  siteId: string | null;
+  code: string;
+  status: ServiceOrderStatus;
+  scheduledAt: string | null;
+  performedAt: string | null;
+  performedById: string | null;
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  paidAmount: number;
+  nextDueDate: string | null;
+  notes: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Populated by findById; omitted from list rows. */
+  lines?: ServiceOrderLine[];
+}

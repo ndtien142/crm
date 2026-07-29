@@ -10,6 +10,9 @@ import type {
   Customer,
   Fault,
   Inspection,
+  ServiceCatalogItem,
+  ServiceOrder,
+  ServiceOrderLine,
   Site,
   User,
 } from '@firecare/types';
@@ -21,6 +24,9 @@ import {
   customers,
   faults,
   inspections,
+  serviceCatalog,
+  serviceOrderLines,
+  serviceOrders,
   sites,
   users,
 } from './schema';
@@ -204,5 +210,61 @@ export function toFault(row: FaultRow): Fault {
     createdById: row.createdById,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+type ServiceCatalogRow = typeof serviceCatalog.$inferSelect;
+type ServiceOrderRow = typeof serviceOrders.$inferSelect;
+type ServiceOrderLineRow = typeof serviceOrderLines.$inferSelect;
+
+export function toServiceCatalogItem(row: ServiceCatalogRow): ServiceCatalogItem {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    category: row.category,
+    defaultCycleMonths: row.defaultCycleMonths,
+    unit: row.unit,
+    unitPrice: row.unitPrice,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function toServiceOrderLine(row: ServiceOrderLineRow): ServiceOrderLine {
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    serviceId: row.serviceId,
+    description: row.description,
+    quantity: row.quantity,
+    unitPrice: row.unitPrice,
+    lineAmount: row.lineAmount,
+    cycleMonths: row.cycleMonths,
+    lineDueDate: row.lineDueDate,
+  };
+}
+
+export function toServiceOrder(row: ServiceOrderRow, lines?: ServiceOrderLine[]): ServiceOrder {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    customerId: row.customerId,
+    siteId: row.siteId,
+    code: row.code,
+    status: row.status,
+    scheduledAt: row.scheduledAt,
+    performedAt: row.performedAt,
+    performedById: row.performedById,
+    totalAmount: row.totalAmount,
+    paymentStatus: row.paymentStatus,
+    paidAmount: row.paidAmount,
+    nextDueDate: row.nextDueDate,
+    notes: row.notes,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    ...(lines ? { lines } : {}),
   };
 }

@@ -541,3 +541,79 @@ describe('faults & repairs (P4)', () => {
     expect(r.statusCode).toBe(403);
   });
 });
+
+describe('service orders (P5)', () => {
+  it('creates a multi-line order (total computed), completes (rolls due), takes payment', async () => {
+    const admin = await token('admin@f.local');
+    const staff = await token('staff@f.local');
+
+    const svc = JSON.parse(
+      (await app.inject({
+        method: 'POST',
+        url: '/api/service-catalog',
+        headers: bearer(admin),
+        payload: { name: 'Đổi bình bột 4kg', category: 'refill_replace', unitPrice: 250000, defaultCycleMonths: 12 },
+      })).body,
+    ).data;
+    expect(svc.id).toBeTruthy();
+
+    const order = JSON.parse(
+      (await app.inject({
+        method: 'POST',
+        url: '/api/service-orders',
+        headers: bearer(staff),
+        payload: {
+          customerId: CUST_A,
+          lines: [
+            { serviceId: svc.id, description: 'Đổi bình bột', quantity: 2, unitPrice: 250000, cycleMonths: 12 },
+            { description: 'Công lắp đặt', quantity: 1, unitPrice: 50000 },
+          ],
+        },
+      })).body,
+    ).data;
+    expect(order.totalAmount).toBe(550000);
+    expect(order.lines.length).toBe(2);
+    expect(order.status).toBe('draft');
+
+    const done = JSON.parse(
+      (await app.inject({
+        method: 'POST',
+        url: `/api/service-orders/${order.id}/complete`,
+        headers: bearer(staff),
+        payload: { performedAt: '2026-07-29' },
+      })).body,
+    ).data;
+    expect(done.status).toBe('done');
+    expect(done.nextDueDate).toBe('2027-07-29'); // +12 months from performedAt
+
+    // Payment is accountant-only.
+    const staffPay = await app.inject({
+      method: 'POST',
+      url: `/api/service-orders/${order.id}/payment`,
+      headers: bearer(staff),
+      payload: { paymentStatus: 'paid', paidAmount: 550000 },
+    });
+    expect(staffPay.statusCode).toBe(403);
+
+    const acc = await token('acc@f.local');
+    const pay = await app.inject({
+      method: 'POST',
+      url: `/api/service-orders/${order.id}/payment`,
+      headers: bearer(acc),
+      payload: { paymentStatus: 'paid', paidAmount: 550000 },
+    });
+    expect(pay.statusCode).toBe(200);
+    expect(JSON.parse(pay.body).data.paymentStatus).toBe('paid');
+  });
+
+  it('accountant cannot create an order (403)', async () => {
+    const acc = await token('acc@f.local');
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/service-orders',
+      headers: bearer(acc),
+      payload: { customerId: CUST_A, lines: [{ description: 'x', quantity: 1, unitPrice: 1 }] },
+    });
+    expect(r.statusCode).toBe(403);
+  });
+});

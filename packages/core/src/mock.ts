@@ -30,13 +30,24 @@ import type {
   NewCustomer,
   NewFault,
   NewInspection,
+  NewServiceCatalogItem,
+  NewServiceOrder,
+  NewServiceOrderLine,
   NewSite,
   NewUser,
   PageQuery,
   Paginated,
+  PaymentStatus,
   RefreshSession,
   RepositoryBundle,
   Role,
+  ServiceCatalogItem,
+  ServiceCatalogRepository,
+  ServiceCategory,
+  ServiceOrder,
+  ServiceOrderLine,
+  ServiceOrderListQuery,
+  ServiceOrderRepository,
   Site,
   SiteListQuery,
   SiteRepository,
@@ -46,6 +57,8 @@ import type {
   UpdateCustomer,
   UpdateFault,
   UpdateInspection,
+  UpdateServiceCatalogItem,
+  UpdateServiceOrder,
   UpdateSite,
   UpdateUser,
   User,
@@ -705,6 +718,184 @@ class MockFaultRepository implements FaultRepository {
   }
 }
 
+class MockServiceCatalogRepository implements ServiceCatalogRepository {
+  constructor(private readonly store: ServiceCatalogItem[]) {}
+
+  async list(query: {
+    category?: ServiceCategory;
+    includeInactive?: boolean;
+  }): Promise<ServiceCatalogItem[]> {
+    return this.store
+      .filter(
+        (x) =>
+          (query.includeInactive || x.isActive) && (!query.category || x.category === query.category),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async findById(id: string): Promise<ServiceCatalogItem | null> {
+    return this.store.find((x) => x.id === id) ?? null;
+  }
+
+  async create(input: NewServiceCatalogItem): Promise<ServiceCatalogItem> {
+    const x: ServiceCatalogItem = {
+      id: randomUUID(),
+      code: input.code ?? null,
+      name: input.name,
+      category: input.category,
+      defaultCycleMonths: input.defaultCycleMonths ?? null,
+      unit: input.unit ?? null,
+      unitPrice: input.unitPrice,
+      isActive: input.isActive ?? true,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(x);
+    return x;
+  }
+
+  async update(id: string, patch: UpdateServiceCatalogItem): Promise<ServiceCatalogItem | null> {
+    const x = this.store.find((y) => y.id === id);
+    if (!x) return null;
+    Object.assign(x, patch, { updatedAt: now() });
+    return x;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const i = this.store.findIndex((y) => y.id === id);
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+}
+
+function addMonthsMock(iso: string, months: number): string {
+  const d = new Date(iso);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+class MockServiceOrderRepository implements ServiceOrderRepository {
+  constructor(
+    private readonly orders: ServiceOrder[],
+    private readonly lines: ServiceOrderLine[],
+  ) {}
+
+  async list(query: ServiceOrderListQuery): Promise<Paginated<ServiceOrder>> {
+    const filtered = this.orders
+      .filter(
+        (o) =>
+          inBranch(o.branchId, query.scope) &&
+          (!query.customerId || o.customerId === query.customerId) &&
+          (!query.status || o.status === query.status) &&
+          (!query.paymentStatus || o.paymentStatus === query.paymentStatus),
+      )
+      .sort((a, b) =>
+        query.sort === 'due'
+          ? (a.nextDueDate ?? '9999-99-99').localeCompare(b.nextDueDate ?? '9999-99-99')
+          : b.createdAt.localeCompare(a.createdAt),
+      );
+    const p = paginate(filtered, query);
+    return { items: p.items.map((o) => ({ ...o, lines: undefined })), total: p.total };
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<ServiceOrder | null> {
+    const o = this.orders.find((x) => x.id === id);
+    if (!o || !inBranch(o.branchId, scope)) return null;
+    return { ...o, lines: this.lines.filter((l) => l.orderId === id) };
+  }
+
+  async create(order: NewServiceOrder, lines: NewServiceOrderLine[]): Promise<ServiceOrder> {
+    const id = randomUUID();
+    const computed = lines.map((l) => ({ ...l, lineAmount: (l.quantity || 0) * (l.unitPrice || 0) }));
+    const o: ServiceOrder = {
+      id,
+      branchId: order.branchId,
+      customerId: order.customerId,
+      siteId: order.siteId ?? null,
+      code: order.code ?? `PDV-${randomUUID().slice(0, 8).toUpperCase()}`,
+      status: order.status ?? 'draft',
+      scheduledAt: order.scheduledAt ?? null,
+      performedAt: null,
+      performedById: null,
+      totalAmount: computed.reduce((s, l) => s + l.lineAmount, 0),
+      paymentStatus: 'unpaid',
+      paidAmount: 0,
+      nextDueDate: null,
+      notes: order.notes ?? null,
+      createdById: order.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.orders.push(o);
+    const lineObjs: ServiceOrderLine[] = computed.map((l) => ({
+      id: randomUUID(),
+      orderId: id,
+      serviceId: l.serviceId ?? null,
+      description: l.description,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      lineAmount: l.lineAmount,
+      cycleMonths: l.cycleMonths ?? null,
+      lineDueDate: null,
+    }));
+    this.lines.push(...lineObjs);
+    return { ...o, lines: lineObjs };
+  }
+
+  async update(id: string, patch: UpdateServiceOrder, scope: BranchScope): Promise<ServiceOrder | null> {
+    const o = this.orders.find((x) => x.id === id);
+    if (!o || !inBranch(o.branchId, scope)) return null;
+    Object.assign(o, patch, { updatedAt: now() });
+    return { ...o, lines: this.lines.filter((l) => l.orderId === id) };
+  }
+
+  async complete(
+    id: string,
+    input: { performedAt: string; performedById?: string | null },
+    scope: BranchScope,
+  ): Promise<ServiceOrder | null> {
+    const o = this.orders.find((x) => x.id === id);
+    if (!o || !inBranch(o.branchId, scope)) return null;
+    const orderLines = this.lines.filter((l) => l.orderId === id);
+    const dueDates = orderLines.map((l) =>
+      l.cycleMonths ? addMonthsMock(input.performedAt, l.cycleMonths) : null,
+    );
+    orderLines.forEach((l, i) => {
+      l.lineDueDate = dueDates[i] ?? null;
+    });
+    o.status = 'done';
+    o.performedAt = input.performedAt;
+    o.performedById = input.performedById ?? null;
+    o.nextDueDate = dueDates.filter((d): d is string => !!d).sort()[0] ?? null;
+    o.updatedAt = now();
+    return { ...o, lines: orderLines };
+  }
+
+  async setPayment(
+    id: string,
+    input: { paymentStatus: PaymentStatus; paidAmount: number },
+    scope: BranchScope,
+  ): Promise<ServiceOrder | null> {
+    const o = this.orders.find((x) => x.id === id);
+    if (!o || !inBranch(o.branchId, scope)) return null;
+    o.paymentStatus = input.paymentStatus;
+    o.paidAmount = input.paidAmount;
+    o.updatedAt = now();
+    return { ...o, lines: this.lines.filter((l) => l.orderId === id) };
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.orders.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.orders.splice(i, 1);
+    for (let k = this.lines.length - 1; k >= 0; k--) {
+      if (this.lines[k]!.orderId === id) this.lines.splice(k, 1);
+    }
+    return true;
+  }
+}
+
 /** Build a fresh mock bundle. Pass seed data for tests. */
 export function createMockRepositories(seed?: {
   users?: (User & { passwordHash: string })[];
@@ -715,6 +906,8 @@ export function createMockRepositories(seed?: {
   checklistTemplates?: ChecklistTemplate[];
   inspections?: Inspection[];
   faults?: Fault[];
+  serviceCatalog?: ServiceCatalogItem[];
+  serviceOrders?: ServiceOrder[];
 }): RepositoryBundle {
   return {
     auth: new MockAuthRepository(),
@@ -726,5 +919,7 @@ export function createMockRepositories(seed?: {
     checklistTemplates: new MockChecklistTemplateRepository(seed?.checklistTemplates ?? []),
     inspections: new MockInspectionRepository(seed?.inspections ?? []),
     faults: new MockFaultRepository(seed?.faults ?? []),
+    serviceCatalog: new MockServiceCatalogRepository(seed?.serviceCatalog ?? []),
+    serviceOrders: new MockServiceOrderRepository(seed?.serviceOrders ?? [], []),
   };
 }

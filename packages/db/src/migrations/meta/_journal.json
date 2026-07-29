@@ -29,6 +29,13 @@
       "when": 1785306871184,
       "tag": "0003_legal_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785311358421,
+      "tag": "0004_needy_rick_jones",
+      "breakpoints": true
     }
   ]
 }
