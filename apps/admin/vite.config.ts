@@ -8,6 +8,5 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  // 5273 — renta/boarding-house admin uses 5173; keep the two apps on separate ports.
-  server: { port: 5273 },
+  server: { port: 5173 },
 });
