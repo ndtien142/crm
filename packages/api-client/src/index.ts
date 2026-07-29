@@ -9,6 +9,8 @@
 import type {
   Asset,
   Branch,
+  CareInteraction,
+  CareTask,
   ChecklistTemplate,
   Customer,
   CustomerType,
@@ -290,6 +292,34 @@ export function createApiClient(opts: ApiClientOptions) {
     payServiceOrder: (id: string, body: Record<string, unknown>) =>
       data<ServiceOrder>(request('POST', `/api/service-orders/${id}/payment`, body)),
     deleteServiceOrder: (id: string) => request<void>('DELETE', `/api/service-orders/${id}`),
+
+    // ── care tasks (Kanban) ──
+    listCareTasks: (q?: {
+      page?: number;
+      pageSize?: number;
+      status?: string;
+      type?: string;
+      priority?: string;
+      assigneeId?: string;
+      customerId?: string;
+      unassignedOnly?: boolean;
+      sort?: 'position' | 'recent' | 'due';
+    }) => page<CareTask>(request('GET', '/api/care-tasks' + toQuery(q))),
+    getCareTask: (id: string) => data<CareTask>(request('GET', `/api/care-tasks/${id}`)),
+    createCareTask: (body: Record<string, unknown>) =>
+      data<CareTask>(request('POST', '/api/care-tasks', body)),
+    updateCareTask: (id: string, body: Record<string, unknown>) =>
+      data<CareTask>(request('PATCH', `/api/care-tasks/${id}`, body)),
+    claimCareTask: (id: string) => data<CareTask>(request('POST', `/api/care-tasks/${id}/claim`)),
+    releaseCareTask: (id: string) =>
+      data<CareTask>(request('POST', `/api/care-tasks/${id}/release`)),
+    deleteCareTask: (id: string) => request<void>('DELETE', `/api/care-tasks/${id}`),
+
+    // ── care interactions (ledger) ──
+    listCareInteractions: (q?: { page?: number; pageSize?: number; customerId?: string; careTaskId?: string }) =>
+      page<CareInteraction>(request('GET', '/api/care-interactions' + toQuery(q))),
+    createCareInteraction: (body: Record<string, unknown>) =>
+      data<CareInteraction>(request('POST', '/api/care-interactions', body)),
   };
 }
 

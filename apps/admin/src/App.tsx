@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import AccountsPage from './pages/AccountsPage';
 import AssetsPage from './pages/AssetsPage';
+import CarePage from './pages/CarePage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
 import FaultsPage from './pages/FaultsPage';
@@ -37,15 +38,7 @@ export default function App() {
         <Route path="/su-co" element={<FaultsPage />} />
         <Route path="/phieu" element={<ServiceOrdersPage />} />
         <Route path="/dich-vu" element={<ServiceCatalogPage />} />
-        <Route
-          path="/cham-soc"
-          element={
-            <PlaceholderPage
-              title="Chăm sóc khách hàng"
-              note="Kanban chăm sóc, nhật ký tương tác và nhắc tái dịch vụ tự động (giai đoạn P3)."
-            />
-          }
-        />
+        <Route path="/cham-soc" element={<CarePage />} />
         <Route
           path="/lich"
           element={<PlaceholderPage title="Lịch hẹn" note="Calendar đặt lịch dịch vụ (giai đoạn P3)." />}

@@ -1,6 +1,11 @@
 import type {
   AssetCategory,
   AssetStatus,
+  CareChannel,
+  CareDisposition,
+  CarePriority,
+  CareTaskStatus,
+  CareTaskType,
   CustomerStatus,
   CustomerType,
   FaultSeverity,
@@ -224,3 +229,92 @@ export const PAYMENT_STATUS_BADGE: Record<PaymentStatus, string> = {
 /** VND currency, e.g. 550000 → "550.000 ₫". */
 const vndFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
 export const formatVnd = (n: number) => vndFormatter.format(n);
+
+// ── Customer care (P6) ──────────────────────────────────────────────────────
+
+export const CARE_TASK_TYPES: { value: CareTaskType; label: string }[] = [
+  { value: 're_service_due', label: 'Đến hạn tái DV' },
+  { value: 'csat', label: 'Khảo sát hài lòng' },
+  { value: 'warranty', label: 'Bảo hành' },
+  { value: 'complaint', label: 'Khiếu nại' },
+  { value: 'followup', label: 'Theo dõi' },
+  { value: 'upsell', label: 'Bán thêm' },
+  { value: 'new_lead', label: 'Khách mới' },
+  { value: 'quote', label: 'Báo giá' },
+  { value: 'other', label: 'Khác' },
+];
+
+/** Kanban columns, left → right. */
+export const CARE_TASK_STATUSES: { value: CareTaskStatus; label: string }[] = [
+  { value: 'todo', label: 'Cần liên hệ' },
+  { value: 'contacting', label: 'Đang liên hệ' },
+  { value: 'scheduled', label: 'Đã hẹn' },
+  { value: 'in_progress', label: 'Đang xử lý' },
+  { value: 'done', label: 'Hoàn tất' },
+  { value: 'lost', label: 'Đã mất' },
+];
+
+export const CARE_PRIORITIES: { value: CarePriority; label: string }[] = [
+  { value: 'low', label: 'Thấp' },
+  { value: 'normal', label: 'Bình thường' },
+  { value: 'high', label: 'Cao' },
+  { value: 'urgent', label: 'Khẩn' },
+];
+
+export const CARE_CHANNELS: { value: CareChannel; label: string }[] = [
+  { value: 'call', label: 'Gọi điện' },
+  { value: 'zalo', label: 'Zalo' },
+  { value: 'sms', label: 'SMS' },
+  { value: 'email', label: 'Email' },
+  { value: 'visit', label: 'Gặp trực tiếp' },
+  { value: 'other', label: 'Khác' },
+];
+
+export const CARE_DISPOSITIONS: { value: CareDisposition; label: string }[] = [
+  { value: 'connected', label: 'Đã liên hệ được' },
+  { value: 'no_answer', label: 'Không nghe máy' },
+  { value: 'callback', label: 'Hẹn gọi lại' },
+  { value: 'agreed', label: 'Khách đồng ý' },
+  { value: 'refused', label: 'Khách từ chối' },
+  { value: 'resolved', label: 'Đã xử lý xong' },
+  { value: 'other', label: 'Khác' },
+];
+
+const careTypeMap = Object.fromEntries(CARE_TASK_TYPES.map((t) => [t.value, t.label]));
+const careStatusMap = Object.fromEntries(CARE_TASK_STATUSES.map((t) => [t.value, t.label]));
+const carePriorityMap = Object.fromEntries(CARE_PRIORITIES.map((t) => [t.value, t.label]));
+const careChannelMap = Object.fromEntries(CARE_CHANNELS.map((t) => [t.value, t.label]));
+const careDispositionMap = Object.fromEntries(CARE_DISPOSITIONS.map((t) => [t.value, t.label]));
+
+export const careTaskTypeLabel = (t: CareTaskType) => careTypeMap[t] ?? t;
+export const careTaskStatusLabel = (s: CareTaskStatus) => careStatusMap[s] ?? s;
+export const carePriorityLabel = (p: CarePriority) => carePriorityMap[p] ?? p;
+export const careChannelLabel = (c: CareChannel) => careChannelMap[c] ?? c;
+export const careDispositionLabel = (d: CareDisposition) => careDispositionMap[d] ?? d;
+
+export const CARE_TYPE_BADGE: Record<CareTaskType, string> = {
+  re_service_due: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400',
+  csat: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400',
+  warranty: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400',
+  complaint: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+  followup: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+  upsell: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  new_lead: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
+  quote: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400',
+  other: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+};
+
+export const CARE_PRIORITY_BADGE: Record<CarePriority, string> = {
+  low: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  normal: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  high: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+  urgent: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+};
+
+/** Left accent bar per priority, for Kanban cards. */
+export const CARE_PRIORITY_ACCENT: Record<CarePriority, string> = {
+  low: 'border-l-slate-300 dark:border-l-slate-600',
+  normal: 'border-l-slate-300 dark:border-l-slate-600',
+  high: 'border-l-amber-400',
+  urgent: 'border-l-red-500',
+};

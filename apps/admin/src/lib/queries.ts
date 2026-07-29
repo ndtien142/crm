@@ -378,3 +378,90 @@ export function useDeleteServiceOrder() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['service-orders'] }),
   });
 }
+
+// ── care tasks (Kanban) ──
+export interface CareTaskFilters {
+  type?: string;
+  priority?: string;
+  assigneeId?: string;
+  customerId?: string;
+  unassignedOnly?: boolean;
+}
+
+export function useCareTasks(filters: CareTaskFilters) {
+  return useQuery({
+    queryKey: ['care-tasks', filters],
+    queryFn: () =>
+      api.listCareTasks({
+        pageSize: 100,
+        sort: 'position',
+        type: filters.type || undefined,
+        priority: filters.priority || undefined,
+        assigneeId: filters.assigneeId || undefined,
+        customerId: filters.customerId || undefined,
+        unassignedOnly: filters.unassignedOnly || undefined,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateCareTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createCareTask(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['care-tasks'] }),
+  });
+}
+
+export function useUpdateCareTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.updateCareTask(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['care-tasks'] }),
+  });
+}
+
+export function useClaimCareTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.claimCareTask(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['care-tasks'] }),
+  });
+}
+
+export function useReleaseCareTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.releaseCareTask(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['care-tasks'] }),
+  });
+}
+
+export function useDeleteCareTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteCareTask(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['care-tasks'] }),
+  });
+}
+
+// ── care interactions (ledger) ──
+export function useCareInteractions(filter: { customerId?: string; careTaskId?: string } | null) {
+  return useQuery({
+    queryKey: ['care-interactions', filter],
+    queryFn: () => api.listCareInteractions({ pageSize: 100, ...filter }),
+    enabled: Boolean(filter && (filter.customerId || filter.careTaskId)),
+  });
+}
+
+export function useCreateCareInteraction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createCareInteraction(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['care-interactions'] });
+      qc.invalidateQueries({ queryKey: ['care-tasks'] });
+    },
+  });
+}
