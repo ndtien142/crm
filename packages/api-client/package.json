@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@firecare/types": "workspace:*"
+    "@firecare/types": "workspace:*",
+    "axios": "^1.7.9"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

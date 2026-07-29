@@ -1,57 +1,97 @@
 import { ApiError } from '@firecare/api-client';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+} from '@firecare/ui';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Flame } from 'lucide-react';
 import { useState } from 'react';
-import { useSession } from '../lib/session';
-import { Button, Card, Input } from '../lib/ui';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { useAuth } from '../store/auth';
+
+const schema = z.object({
+  email: z.string().email('Email không hợp lệ'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+});
+type Values = z.infer<typeof schema>;
 
 export default function LoginPage() {
-  const { login } = useSession();
-  const [email, setEmail] = useState('admin@firecare.local');
-  const [password, setPassword] = useState('');
+  const login = useAuth((s) => s.login);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: 'admin@firecare.local', password: '' },
+  });
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
+  async function onSubmit(values: Values) {
     setError('');
     try {
-      await login(email, password);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Đăng nhập thất bại');
-    } finally {
-      setBusy(false);
+      await login(values.email, values.password);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Đăng nhập thất bại');
     }
   }
 
   return (
-    <div className="grid h-full place-items-center bg-slate-50 p-4">
-      <Card className="w-full max-w-sm p-6">
-        <div className="mb-1 flex items-center gap-2 text-xl font-bold text-slate-900">
-          <Flame className="h-6 w-6 text-red-600" /> FireCare
-        </div>
-        <p className="mb-6 text-sm text-slate-500">Hệ thống quản lý dịch vụ PCCC</p>
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+    <div className="grid h-screen place-items-center bg-muted/40 p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2 text-xl font-bold">
+            <Flame className="size-6 text-primary" /> FireCare
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Mật khẩu</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          {error && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-          )}
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? 'Đang đăng nhập…' : 'Đăng nhập'}
-          </Button>
-        </form>
+          <CardDescription>Hệ thống quản lý dịch vụ PCCC</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" autoComplete="username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mật khẩu</FormLabel>
+                    <FormControl>
+                      <Input type="password" autoComplete="current-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {error && (
+                <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập'}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
       </Card>
     </div>
   );

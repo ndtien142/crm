@@ -1,19 +1,10 @@
-@import 'tailwindcss';
+@import '@firecare/ui/globals.css';
 
-:root {
-  color-scheme: light;
-}
+/* Tailwind must also scan the shared UI package's source for class names. */
+@source '../../../packages/ui/src/**/*.{ts,tsx}';
 
 html,
 body,
 #root {
   height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family:
-    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #0f172a;
 }

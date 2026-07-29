@@ -4,6 +4,7 @@
  * cross-cutting middleware, and register the resource routes.
  */
 
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -30,6 +31,7 @@ export async function buildApp(
 
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, { origin: config.corsOrigins, credentials: true });
+  await app.register(cookie);
   await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
 
   const repos: RepositoryBundle =
@@ -42,7 +44,10 @@ export async function buildApp(
   installPrincipal(app, repos, tokens.verifyAccessToken);
 
   registerHealthRoutes(app);
-  registerAuthRoutes(app, repos, tokens, config.jwt.refreshTtlDays);
+  registerAuthRoutes(app, repos, tokens, {
+    refreshTtlDays: config.jwt.refreshTtlDays,
+    isProduction: config.isProduction,
+  });
   registerUserRoutes(app, repos);
   registerBranchRoutes(app, repos);
   registerCustomerRoutes(app, repos);

@@ -1,20 +1,20 @@
+import { Loader2 } from 'lucide-react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
-import { useSession } from './lib/session';
-import { Spinner } from './lib/ui';
 import AccountsPage from './pages/AccountsPage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import { useAuth } from './store/auth';
 
 export default function App() {
-  const { status } = useSession();
+  const status = useAuth((s) => s.status);
 
   if (status === 'loading') {
     return (
-      <div className="grid h-full place-items-center">
-        <Spinner className="h-8 w-8" />
+      <div className="grid h-screen place-items-center bg-background">
+        <Loader2 className="size-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -40,9 +40,7 @@ export default function App() {
         />
         <Route
           path="/ban-do"
-          element={
-            <PlaceholderPage title="Bản đồ điểm" note="Registry điểm Google Maps (giai đoạn P4)." />
-          }
+          element={<PlaceholderPage title="Bản đồ điểm" note="Registry điểm Google Maps (giai đoạn P4)." />}
         />
         <Route path="/tai-khoan" element={<AccountsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

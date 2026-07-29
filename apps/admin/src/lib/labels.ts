@@ -23,9 +23,10 @@ const statusMap = Object.fromEntries(CUSTOMER_STATUSES.map((s) => [s.value, s.la
 export const customerTypeLabel = (t: CustomerType) => typeMap[t] ?? t;
 export const customerStatusLabel = (s: CustomerStatus) => statusMap[s] ?? s;
 
-export const STATUS_COLOR: Record<CustomerStatus, 'green' | 'slate' | 'red' | 'blue'> = {
-  active: 'green',
-  prospect: 'blue',
-  inactive: 'slate',
-  lost: 'red',
+/** Tailwind classes for a status badge (light + dark). */
+export const STATUS_BADGE: Record<CustomerStatus, string> = {
+  active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  prospect: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+  inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  lost: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
 };

@@ -1,18 +1,13 @@
 /**
- * Typed REST client (native fetch — no axios). One `request` helper attaches the
- * bearer token from `getToken()` per call and unwraps the `{ data, meta }`
- * envelope; each method maps 1:1 to a server route.
+ * Typed REST client built on axios. `withCredentials` sends the httpOnly refresh
+ * cookie; a request interceptor attaches the in-memory access token; a response
+ * interceptor transparently refreshes the access token once on a 401 (single-
+ * flight) and retries. Each method maps 1:1 to a server route and unwraps the
+ * `{ data, meta }` envelope.
  */
 
-import type {
-  Branch,
-  Customer,
-  CustomerType,
-  ErrorCode,
-  PageMeta,
-  Role,
-  User,
-} from '@firecare/types';
+import type { Branch, Customer, CustomerType, ErrorCode, PageMeta, Role, User } from '@firecare/types';
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig, isAxiosError } from 'axios';
 
 export class ApiError extends Error {
   constructor(
@@ -28,11 +23,13 @@ export class ApiError extends Error {
 export interface ApiClientOptions {
   baseUrl: string;
   getToken: () => string | null;
+  /** Called by the 401 interceptor after a successful silent refresh. */
+  setToken: (token: string | null) => void;
 }
 
-export interface LoginResult {
+/** Auth response: access token in the body, refresh token in an httpOnly cookie. */
+export interface AuthResult {
   accessToken: string;
-  refreshToken: string;
   user: User;
 }
 
@@ -51,29 +48,63 @@ function toQuery(q?: Query): string {
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
+type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };
+
 export function createApiClient(opts: ApiClientOptions) {
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    let res: Response;
+  const http: AxiosInstance = axios.create({ baseURL: opts.baseUrl, withCredentials: true });
+
+  http.interceptors.request.use((config) => {
+    const token = opts.getToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  });
+
+  // Single-flight silent refresh: many concurrent 401s share one refresh call.
+  let refreshing: Promise<string | null> | null = null;
+  async function refreshAccessToken(): Promise<string | null> {
     try {
-      const headers: Record<string, string> = {};
-      if (body !== undefined) headers['content-type'] = 'application/json';
-      const token = opts.getToken();
-      if (token) headers.authorization = `Bearer ${token}`;
-      res = await fetch(opts.baseUrl + path, {
-        method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
+      const res = await axios.post(`${opts.baseUrl}/api/auth/refresh`, {}, { withCredentials: true });
+      const token = (res.data?.data?.accessToken as string | undefined) ?? null;
+      opts.setToken(token);
+      return token;
+    } catch {
+      opts.setToken(null);
+      return null;
+    }
+  }
+
+  http.interceptors.response.use(
+    (r) => r,
+    async (error: unknown) => {
+      if (isAxiosError(error) && error.response?.status === 401) {
+        const original = error.config as RetriableConfig | undefined;
+        const url = original?.url ?? '';
+        if (original && !original._retried && !url.includes('/api/auth/')) {
+          original._retried = true;
+          refreshing = refreshing ?? refreshAccessToken();
+          const token = await refreshing;
+          refreshing = null;
+          if (token) return http.request(original);
+        }
+      }
+      throw error;
+    },
+  );
+
+  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    try {
+      const res = await http.request<T>({ method, url: path, data: body });
+      return res.data;
     } catch (e) {
-      throw new ApiError((e as Error).message || 'Không kết nối được máy chủ', 'NETWORK', 0);
+      if (isAxiosError(e)) {
+        const err = (e.response?.data as { error?: { code?: ErrorCode; message?: string } })?.error;
+        if (e.response) {
+          throw new ApiError(err?.message ?? 'Lỗi', err?.code ?? 'NETWORK', e.response.status);
+        }
+        throw new ApiError(e.message || 'Không kết nối được máy chủ', 'NETWORK', 0);
+      }
+      throw new ApiError('Lỗi không xác định', 'NETWORK', 0);
     }
-    if (res.status === 204) return undefined as T;
-    const json = await res.json().catch(() => null);
-    if (!res.ok) {
-      const err = json?.error;
-      throw new ApiError(err?.message ?? 'Lỗi không xác định', err?.code ?? 'NETWORK', res.status);
-    }
-    return json as T;
   }
 
   const data = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data);
@@ -81,12 +112,11 @@ export function createApiClient(opts: ApiClientOptions) {
     p.then((r) => ({ items: r.data, meta: r.meta }));
 
   return {
-    // ── auth ──
+    // ── auth ── (refresh/logout rely on the httpOnly cookie — no args)
     login: (email: string, password: string) =>
-      data<LoginResult>(request('POST', '/api/auth/login', { email, password })),
-    refresh: (refreshToken: string) =>
-      data<LoginResult>(request('POST', '/api/auth/refresh', { refreshToken })),
-    logout: (refreshToken: string) => request('POST', '/api/auth/logout', { refreshToken }),
+      data<AuthResult>(request('POST', '/api/auth/login', { email, password })),
+    refresh: () => data<AuthResult>(request('POST', '/api/auth/refresh', {})),
+    logout: () => request('POST', '/api/auth/logout', {}),
     me: () => data<User>(request('GET', '/api/auth/me')),
 
     // ── customers ──
@@ -105,7 +135,7 @@ export function createApiClient(opts: ApiClientOptions) {
       data<Customer>(request('POST', '/api/customers', body)),
     updateCustomer: (id: string, body: Record<string, unknown>) =>
       data<Customer>(request('PATCH', `/api/customers/${id}`, body)),
-    deleteCustomer: (id: string) => request('DELETE', `/api/customers/${id}`),
+    deleteCustomer: (id: string) => request<void>('DELETE', `/api/customers/${id}`),
     importCustomers: (body: { branchId?: string; rows: Record<string, unknown>[] }) =>
       data<{ inserted: number; skipped: number; skippedPhones: string[] }>(
         request('POST', '/api/customers/import', body),
@@ -126,7 +156,7 @@ export function createApiClient(opts: ApiClientOptions) {
     updateUser: (id: string, body: Record<string, unknown>) =>
       data<User>(request('PATCH', `/api/users/${id}`, body)),
     resetPassword: (id: string, password: string) =>
-      request('POST', `/api/users/${id}/reset-password`, { password }),
+      request<void>('POST', `/api/users/${id}/reset-password`, { password }),
   };
 }
 

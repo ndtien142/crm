@@ -1,6 +1,7 @@
 /**
- * Singleton API client. The access token lives in a module variable (read by the
- * client per request); the session layer sets it. Kept here — not in session.tsx —
+ * Singleton API client. The access token lives in a module variable (in memory
+ * only — the refresh token is an httpOnly cookie). `getToken`/`setToken` are read
+ * by the client's request + 401-refresh interceptors. Kept here, not in the store,
  * so the client never imports React state (avoids a cycle).
  */
 
@@ -18,4 +19,8 @@ export function getAccessToken(): string | null {
 
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
-export const api = createApiClient({ baseUrl, getToken: getAccessToken });
+export const api = createApiClient({
+  baseUrl,
+  getToken: getAccessToken,
+  setToken: setAccessToken,
+});

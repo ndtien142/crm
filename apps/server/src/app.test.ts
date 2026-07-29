@@ -164,6 +164,37 @@ describe('auth', () => {
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body).data.role).toBe('staff');
   });
+
+  it('refreshes the access token via the httpOnly cookie (and rotates it)', async () => {
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'admin@f.local', password: PASSWORD },
+    });
+    const cookie = login.cookies.find((c) => c.name === 'fc_refresh');
+    expect(cookie?.value).toBeTruthy();
+
+    const refreshed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/refresh',
+      cookies: { fc_refresh: cookie!.value },
+    });
+    expect(refreshed.statusCode).toBe(200);
+    expect(JSON.parse(refreshed.body).data.accessToken).toBeTruthy();
+
+    // Rotation: the original cookie is now revoked.
+    const reuse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/refresh',
+      cookies: { fc_refresh: cookie!.value },
+    });
+    expect(reuse.statusCode).toBe(401);
+  });
+
+  it('rejects refresh with no cookie (401)', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/auth/refresh' });
+    expect(res.statusCode).toBe(401);
+  });
 });
 
 describe('authorization + branch scoping', () => {
