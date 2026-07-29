@@ -277,3 +277,104 @@ export function useDeleteFault() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['faults'] }),
   });
 }
+
+// ── service catalog (danh mục dịch vụ) ──
+export function useServiceCatalog(opts?: { category?: string; includeInactive?: boolean }) {
+  return useQuery({
+    queryKey: ['service-catalog', opts ?? {}],
+    queryFn: () => api.listServiceCatalog(opts),
+  });
+}
+
+export function useCreateService() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createService(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-catalog'] }),
+  });
+}
+
+export function useUpdateService() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.updateService(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-catalog'] }),
+  });
+}
+
+export function useDeleteService() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteService(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-catalog'] }),
+  });
+}
+
+// ── service orders (phiếu dịch vụ) ──
+export interface ServiceOrderFilters {
+  page: number;
+  pageSize: number;
+  customerId?: string;
+  status?: string;
+  paymentStatus?: string;
+  sort?: 'recent' | 'due';
+}
+
+export function useServiceOrders(filters: ServiceOrderFilters) {
+  return useQuery({
+    queryKey: ['service-orders', filters],
+    queryFn: () =>
+      api.listServiceOrders({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        customerId: filters.customerId || undefined,
+        status: filters.status || undefined,
+        paymentStatus: filters.paymentStatus || undefined,
+        sort: filters.sort,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useServiceOrder(id: string | null) {
+  return useQuery({
+    queryKey: ['service-order', id],
+    queryFn: () => api.getServiceOrder(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createServiceOrder(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-orders'] }),
+  });
+}
+
+export function useCompleteServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.completeServiceOrder(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-orders'] }),
+  });
+}
+
+export function usePayServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.payServiceOrder(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-orders'] }),
+  });
+}
+
+export function useDeleteServiceOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteServiceOrder(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['service-orders'] }),
+  });
+}

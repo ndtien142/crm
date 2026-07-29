@@ -17,6 +17,8 @@ import type {
   Inspection,
   PageMeta,
   Role,
+  ServiceCatalogItem,
+  ServiceOrder,
   Site,
   User,
 } from '@firecare/types';
@@ -259,6 +261,35 @@ export function createApiClient(opts: ApiClientOptions) {
     resolveFault: (id: string, body: Record<string, unknown>) =>
       data<Fault>(request('POST', `/api/faults/${id}/resolve`, body)),
     deleteFault: (id: string) => request<void>('DELETE', `/api/faults/${id}`),
+
+    // ── service catalog ──
+    listServiceCatalog: (q?: { category?: string; includeInactive?: boolean }) =>
+      data<ServiceCatalogItem[]>(request('GET', '/api/service-catalog' + toQuery(q))),
+    createService: (body: Record<string, unknown>) =>
+      data<ServiceCatalogItem>(request('POST', '/api/service-catalog', body)),
+    updateService: (id: string, body: Record<string, unknown>) =>
+      data<ServiceCatalogItem>(request('PATCH', `/api/service-catalog/${id}`, body)),
+    deleteService: (id: string) => request<void>('DELETE', `/api/service-catalog/${id}`),
+
+    // ── service orders ──
+    listServiceOrders: (q?: {
+      page?: number;
+      pageSize?: number;
+      customerId?: string;
+      status?: string;
+      paymentStatus?: string;
+      sort?: 'recent' | 'due';
+    }) => page<ServiceOrder>(request('GET', '/api/service-orders' + toQuery(q))),
+    getServiceOrder: (id: string) => data<ServiceOrder>(request('GET', `/api/service-orders/${id}`)),
+    createServiceOrder: (body: Record<string, unknown>) =>
+      data<ServiceOrder>(request('POST', '/api/service-orders', body)),
+    updateServiceOrder: (id: string, body: Record<string, unknown>) =>
+      data<ServiceOrder>(request('PATCH', `/api/service-orders/${id}`, body)),
+    completeServiceOrder: (id: string, body: Record<string, unknown>) =>
+      data<ServiceOrder>(request('POST', `/api/service-orders/${id}/complete`, body)),
+    payServiceOrder: (id: string, body: Record<string, unknown>) =>
+      data<ServiceOrder>(request('POST', `/api/service-orders/${id}/payment`, body)),
+    deleteServiceOrder: (id: string) => request<void>('DELETE', `/api/service-orders/${id}`),
   };
 }
 

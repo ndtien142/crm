@@ -8,6 +8,9 @@ import type {
   InspectionPriority,
   InspectionStatus,
   InspectionType,
+  PaymentStatus,
+  ServiceCategory,
+  ServiceOrderStatus,
   SiteType,
 } from '@firecare/types';
 
@@ -169,3 +172,55 @@ export const FAULT_STATUS_BADGE: Record<FaultStatus, string> = {
   in_repair: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
   resolved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
 };
+
+// ── Service catalog & orders (P5) ───────────────────────────────────────────
+
+export const SERVICE_CATEGORIES: { value: ServiceCategory; label: string }[] = [
+  { value: 'refill_replace', label: 'Đổi/nạp bình' },
+  { value: 'maintenance', label: 'Bảo trì' },
+  { value: 'recharge', label: 'Nạp sạc' },
+  { value: 'inspection', label: 'Kiểm định' },
+  { value: 'install', label: 'Lắp đặt' },
+  { value: 'training', label: 'Tập huấn' },
+  { value: 'other', label: 'Khác' },
+];
+
+export const SERVICE_ORDER_STATUSES: { value: ServiceOrderStatus; label: string }[] = [
+  { value: 'draft', label: 'Nháp' },
+  { value: 'scheduled', label: 'Đã lên lịch' },
+  { value: 'in_progress', label: 'Đang thực hiện' },
+  { value: 'done', label: 'Hoàn tất' },
+  { value: 'canceled', label: 'Đã huỷ' },
+];
+
+export const PAYMENT_STATUSES: { value: PaymentStatus; label: string }[] = [
+  { value: 'unpaid', label: 'Chưa thu' },
+  { value: 'partial', label: 'Thu một phần' },
+  { value: 'paid', label: 'Đã thu' },
+];
+
+const serviceCategoryMap = Object.fromEntries(SERVICE_CATEGORIES.map((t) => [t.value, t.label]));
+const orderStatusMap = Object.fromEntries(SERVICE_ORDER_STATUSES.map((t) => [t.value, t.label]));
+const paymentStatusMap = Object.fromEntries(PAYMENT_STATUSES.map((t) => [t.value, t.label]));
+
+export const serviceCategoryLabel = (c: ServiceCategory) => serviceCategoryMap[c] ?? c;
+export const serviceOrderStatusLabel = (s: ServiceOrderStatus) => orderStatusMap[s] ?? s;
+export const paymentStatusLabel = (s: PaymentStatus) => paymentStatusMap[s] ?? s;
+
+export const SERVICE_ORDER_STATUS_BADGE: Record<ServiceOrderStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+  in_progress: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+  done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  canceled: 'bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400',
+};
+
+export const PAYMENT_STATUS_BADGE: Record<PaymentStatus, string> = {
+  unpaid: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+  paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+};
+
+/** VND currency, e.g. 550000 → "550.000 ₫". */
+const vndFormatter = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+export const formatVnd = (n: number) => vndFormatter.format(n);

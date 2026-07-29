@@ -9,6 +9,8 @@ import FaultsPage from './pages/FaultsPage';
 import InspectionsPage from './pages/InspectionsPage';
 import LoginPage from './pages/LoginPage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import ServiceCatalogPage from './pages/ServiceCatalogPage';
+import ServiceOrdersPage from './pages/ServiceOrdersPage';
 import SitesPage from './pages/SitesPage';
 import { useAuth } from './store/auth';
 
@@ -33,6 +35,8 @@ export default function App() {
         <Route path="/thiet-bi" element={<AssetsPage />} />
         <Route path="/kiem-tra" element={<InspectionsPage />} />
         <Route path="/su-co" element={<FaultsPage />} />
+        <Route path="/phieu" element={<ServiceOrdersPage />} />
+        <Route path="/dich-vu" element={<ServiceCatalogPage />} />
         <Route
           path="/cham-soc"
           element={
