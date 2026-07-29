@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@firecare/ui/components",
+    "ui": "@firecare/ui/components/ui",
+    "utils": "@firecare/ui/lib/utils",
+    "lib": "@firecare/ui/lib",
+    "hooks": "@firecare/ui/hooks"
+  }
+}
