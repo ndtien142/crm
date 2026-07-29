@@ -1,4 +1,10 @@
-import type { CustomerStatus, CustomerType } from '@firecare/types';
+import type {
+  AssetCategory,
+  AssetStatus,
+  CustomerStatus,
+  CustomerType,
+  SiteType,
+} from '@firecare/types';
 
 export const CUSTOMER_TYPES: { value: CustomerType; label: string }[] = [
   { value: 'individual', label: 'Cá nhân' },
@@ -29,4 +35,51 @@ export const STATUS_BADGE: Record<CustomerStatus, string> = {
   prospect: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
   inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
   lost: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+};
+
+// ── Sites & Assets (P2) ─────────────────────────────────────────────────────
+
+export const SITE_TYPES: { value: SiteType; label: string }[] = [
+  { value: 'building', label: 'Tòa nhà' },
+  { value: 'factory', label: 'Nhà xưởng' },
+  { value: 'restaurant', label: 'Nhà hàng/Quán ăn' },
+  { value: 'school', label: 'Trường học' },
+  { value: 'office', label: 'Văn phòng' },
+  { value: 'other', label: 'Khác' },
+];
+
+export const ASSET_CATEGORIES: { value: AssetCategory; label: string }[] = [
+  { value: 'extinguisher', label: 'Bình chữa cháy' },
+  { value: 'alarm_panel', label: 'Tủ báo cháy' },
+  { value: 'detector', label: 'Đầu báo' },
+  { value: 'hydrant', label: 'Họng nước' },
+  { value: 'sprinkler', label: 'Đầu phun' },
+  { value: 'emergency_light', label: 'Đèn thoát hiểm' },
+  { value: 'hose', label: 'Vòi/cuộn vòi' },
+  { value: 'pump', label: 'Máy bơm' },
+  { value: 'other', label: 'Khác' },
+];
+
+export const ASSET_STATUSES: { value: AssetStatus; label: string }[] = [
+  { value: 'active', label: 'Hoạt động' },
+  { value: 'inactive', label: 'Ngừng' },
+  { value: 'faulty', label: 'Lỗi' },
+  { value: 'retired', label: 'Loại bỏ' },
+  { value: 'pending', label: 'Chờ kích hoạt' },
+];
+
+const siteTypeMap = Object.fromEntries(SITE_TYPES.map((t) => [t.value, t.label]));
+const assetCategoryMap = Object.fromEntries(ASSET_CATEGORIES.map((t) => [t.value, t.label]));
+const assetStatusMap = Object.fromEntries(ASSET_STATUSES.map((t) => [t.value, t.label]));
+
+export const siteTypeLabel = (t: SiteType) => siteTypeMap[t] ?? t;
+export const assetCategoryLabel = (c: AssetCategory) => assetCategoryMap[c] ?? c;
+export const assetStatusLabel = (s: AssetStatus) => assetStatusMap[s] ?? s;
+
+export const ASSET_STATUS_BADGE: Record<AssetStatus, string> = {
+  active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+  inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  faulty: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+  retired: 'bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400',
+  pending: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
 };

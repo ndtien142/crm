@@ -6,7 +6,17 @@
  * `{ data, meta }` envelope.
  */
 
-import type { Branch, Customer, CustomerType, ErrorCode, PageMeta, Role, User } from '@firecare/types';
+import type {
+  Asset,
+  Branch,
+  Customer,
+  CustomerType,
+  ErrorCode,
+  PageMeta,
+  Role,
+  Site,
+  User,
+} from '@firecare/types';
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, isAxiosError } from 'axios';
 
 export class ApiError extends Error {
@@ -157,6 +167,43 @@ export function createApiClient(opts: ApiClientOptions) {
       data<User>(request('PATCH', `/api/users/${id}`, body)),
     resetPassword: (id: string, password: string) =>
       request<void>('POST', `/api/users/${id}/reset-password`, { password }),
+
+    // ── sites ──
+    listSites: (q?: {
+      page?: number;
+      pageSize?: number;
+      q?: string;
+      customerId?: string;
+      type?: string;
+    }) => page<Site>(request('GET', '/api/sites' + toQuery(q))),
+    createSite: (body: Record<string, unknown>) => data<Site>(request('POST', '/api/sites', body)),
+    updateSite: (id: string, body: Record<string, unknown>) =>
+      data<Site>(request('PATCH', `/api/sites/${id}`, body)),
+    deleteSite: (id: string) => request<void>('DELETE', `/api/sites/${id}`),
+
+    // ── assets ──
+    listAssets: (q?: {
+      page?: number;
+      pageSize?: number;
+      q?: string;
+      siteId?: string;
+      customerId?: string;
+      category?: string;
+      status?: string;
+      dueBefore?: string;
+      sort?: 'recent' | 'due';
+    }) => page<Asset>(request('GET', '/api/assets' + toQuery(q))),
+    getAsset: (id: string) => data<Asset>(request('GET', `/api/assets/${id}`)),
+    getAssetByQr: (code: string) => data<Asset>(request('GET', `/api/assets/qr/${code}`)),
+    createAsset: (body: Record<string, unknown>) =>
+      data<Asset>(request('POST', '/api/assets', body)),
+    updateAsset: (id: string, body: Record<string, unknown>) =>
+      data<Asset>(request('PATCH', `/api/assets/${id}`, body)),
+    deleteAsset: (id: string) => request<void>('DELETE', `/api/assets/${id}`),
+    importAssets: (body: { siteId: string; rows: Record<string, unknown>[] }) =>
+      data<{ inserted: number; skipped: number; skippedRefs: string[] }>(
+        request('POST', '/api/assets/import', body),
+      ),
   };
 }
 

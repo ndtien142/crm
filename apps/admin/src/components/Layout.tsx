@@ -17,6 +17,8 @@ import {
   SheetTitle,
 } from '@firecare/ui';
 import {
+  Boxes,
+  Building2,
   CalendarDays,
   Flame,
   HeartHandshake,
@@ -45,6 +47,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/', label: 'Bảng điều khiển', icon: LayoutDashboard, end: true },
   { to: '/khach-hang', label: 'Khách hàng', icon: Users },
+  { to: '/dia-diem', label: 'Địa điểm', icon: Building2 },
+  { to: '/thiet-bi', label: 'Thiết bị', icon: Boxes },
   { to: '/cham-soc', label: 'Chăm sóc', icon: HeartHandshake },
   { to: '/lich', label: 'Lịch hẹn', icon: CalendarDays },
   { to: '/ban-do', label: 'Bản đồ điểm', icon: MapPin },

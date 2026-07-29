@@ -2,10 +2,12 @@ import { Loader2 } from 'lucide-react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import AccountsPage from './pages/AccountsPage';
+import AssetsPage from './pages/AssetsPage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import SitesPage from './pages/SitesPage';
 import { useAuth } from './store/auth';
 
 export default function App() {
@@ -25,6 +27,8 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/khach-hang" element={<CustomersPage />} />
+        <Route path="/dia-diem" element={<SitesPage />} />
+        <Route path="/thiet-bi" element={<AssetsPage />} />
         <Route
           path="/cham-soc"
           element={

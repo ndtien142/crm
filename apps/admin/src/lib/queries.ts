@@ -86,3 +86,83 @@ export function useResetPassword() {
     mutationFn: (v: { id: string; password: string }) => api.resetPassword(v.id, v.password),
   });
 }
+
+// ── sites ──
+export function useSites(filter?: { q?: string; customerId?: string }) {
+  return useQuery({
+    queryKey: ['sites', filter],
+    queryFn: () => api.listSites({ pageSize: 100, ...filter }),
+  });
+}
+
+export function useCreateSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createSite(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sites'] }),
+  });
+}
+
+export function useDeleteSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteSite(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sites'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+// ── assets ──
+export interface AssetFilters {
+  page: number;
+  pageSize: number;
+  q?: string;
+  siteId?: string;
+  category?: string;
+  status?: string;
+  sort?: 'recent' | 'due';
+}
+
+export function useAssets(filters: AssetFilters) {
+  return useQuery({
+    queryKey: ['assets', filters],
+    queryFn: () =>
+      api.listAssets({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        q: filters.q || undefined,
+        siteId: filters.siteId || undefined,
+        category: filters.category || undefined,
+        status: filters.status || undefined,
+        sort: filters.sort,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createAsset(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+}
+
+export function useDeleteAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteAsset(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+}
+
+export function useImportAssets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { siteId: string; rows: Record<string, unknown>[] }) =>
+      api.importAssets(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+}
