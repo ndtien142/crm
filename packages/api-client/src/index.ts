@@ -13,6 +13,7 @@ import type {
   Customer,
   CustomerType,
   ErrorCode,
+  Fault,
   Inspection,
   PageMeta,
   Role,
@@ -241,6 +242,23 @@ export function createApiClient(opts: ApiClientOptions) {
       data<ChecklistTemplate>(request('PATCH', `/api/checklist-templates/${id}`, body)),
     deleteChecklistTemplate: (id: string) =>
       request<void>('DELETE', `/api/checklist-templates/${id}`),
+
+    // ── faults ──
+    listFaults: (q?: {
+      page?: number;
+      pageSize?: number;
+      assetId?: string;
+      siteId?: string;
+      customerId?: string;
+      status?: string;
+      severity?: string;
+    }) => page<Fault>(request('GET', '/api/faults' + toQuery(q))),
+    createFault: (body: Record<string, unknown>) => data<Fault>(request('POST', '/api/faults', body)),
+    updateFault: (id: string, body: Record<string, unknown>) =>
+      data<Fault>(request('PATCH', `/api/faults/${id}`, body)),
+    resolveFault: (id: string, body: Record<string, unknown>) =>
+      data<Fault>(request('POST', `/api/faults/${id}/resolve`, body)),
+    deleteFault: (id: string) => request<void>('DELETE', `/api/faults/${id}`),
   };
 }
 

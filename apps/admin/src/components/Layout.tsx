@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from '@firecare/ui';
 import {
+  AlertTriangle,
   Boxes,
   Building2,
   CalendarDays,
@@ -51,6 +52,7 @@ const NAV: NavItem[] = [
   { to: '/dia-diem', label: 'Địa điểm', icon: Building2 },
   { to: '/thiet-bi', label: 'Thiết bị', icon: Boxes },
   { to: '/kiem-tra', label: 'Kiểm tra', icon: ClipboardCheck },
+  { to: '/su-co', label: 'Sự cố', icon: AlertTriangle },
   { to: '/cham-soc', label: 'Chăm sóc', icon: HeartHandshake },
   { to: '/lich', label: 'Lịch hẹn', icon: CalendarDays },
   { to: '/ban-do', label: 'Bản đồ điểm', icon: MapPin },

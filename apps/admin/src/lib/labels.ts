@@ -3,6 +3,8 @@ import type {
   AssetStatus,
   CustomerStatus,
   CustomerType,
+  FaultSeverity,
+  FaultStatus,
   InspectionPriority,
   InspectionStatus,
   InspectionType,
@@ -134,4 +136,36 @@ export const INSPECTION_PRIORITY_BADGE: Record<InspectionPriority, string> = {
   normal: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
   high: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
   urgent: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+};
+
+// ── Faults & Repairs (P4) ───────────────────────────────────────────────────
+
+export const FAULT_SEVERITIES: { value: FaultSeverity; label: string }[] = [
+  { value: 'low', label: 'Nhẹ' },
+  { value: 'medium', label: 'Trung bình' },
+  { value: 'high', label: 'Nghiêm trọng' },
+];
+
+export const FAULT_STATUSES: { value: FaultStatus; label: string }[] = [
+  { value: 'open', label: 'Mới' },
+  { value: 'in_repair', label: 'Đang sửa' },
+  { value: 'resolved', label: 'Đã xử lý' },
+];
+
+const faultSevMap = Object.fromEntries(FAULT_SEVERITIES.map((t) => [t.value, t.label]));
+const faultStatusMap = Object.fromEntries(FAULT_STATUSES.map((t) => [t.value, t.label]));
+
+export const faultSeverityLabel = (s: FaultSeverity) => faultSevMap[s] ?? s;
+export const faultStatusLabel = (s: FaultStatus) => faultStatusMap[s] ?? s;
+
+export const FAULT_SEVERITY_BADGE: Record<FaultSeverity, string> = {
+  low: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+  high: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+};
+
+export const FAULT_STATUS_BADGE: Record<FaultStatus, string> = {
+  open: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400',
+  in_repair: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+  resolved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
 };

@@ -222,3 +222,58 @@ export function useDeleteInspection() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['inspections'] }),
   });
 }
+
+// ── faults ──
+export interface FaultFilters {
+  page: number;
+  pageSize: number;
+  status?: string;
+  severity?: string;
+  assetId?: string;
+}
+
+export function useFaults(filters: FaultFilters) {
+  return useQuery({
+    queryKey: ['faults', filters],
+    queryFn: () =>
+      api.listFaults({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        status: filters.status || undefined,
+        severity: filters.severity || undefined,
+        assetId: filters.assetId || undefined,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateFault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createFault(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['faults'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+export function useResolveFault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.resolveFault(v.id, v.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['faults'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+export function useDeleteFault() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteFault(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['faults'] }),
+  });
+}
