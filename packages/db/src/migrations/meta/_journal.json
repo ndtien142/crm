@@ -15,6 +15,13 @@
       "when": 1785298097200,
       "tag": "0001_melodic_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785305642674,
+      "tag": "0002_lean_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }

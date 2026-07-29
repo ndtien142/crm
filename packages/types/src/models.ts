@@ -156,3 +156,63 @@ export interface Asset {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Inspections / kiểm định (P3) ─────────────────────────────────────────────
+
+export type InspectionType = 'routine' | 'annual' | 'fire_drill' | 'electrical' | 'kiem_dinh' | 'other';
+export type InspectionStatus = 'scheduled' | 'in_progress' | 'passed' | 'failed' | 'canceled';
+export type InspectionPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface ChecklistItem {
+  key: string;
+  label: string;
+}
+
+/** Reusable checklist (company-wide, not branch-scoped). */
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+  inspectionType: InspectionType;
+  /** null = applies to any asset category. */
+  assetCategory: AssetCategory | null;
+  items: ChecklistItem[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InspectionResultItem {
+  key: string;
+  label: string;
+  pass: boolean;
+  note?: string;
+}
+
+export interface InspectionEvidence {
+  url: string;
+  caption?: string;
+}
+
+export interface Inspection {
+  id: string;
+  branchId: string;
+  siteId: string;
+  /** null = a site-level inspection (e.g. fire drill), not tied to one device. */
+  assetId: string | null;
+  customerId: string;
+  code: string;
+  type: InspectionType;
+  templateId: string | null;
+  inspectorId: string | null;
+  scheduledDate: string | null;
+  performedDate: string | null;
+  status: InspectionStatus;
+  priority: InspectionPriority;
+  result: InspectionResultItem[];
+  evidence: InspectionEvidence[];
+  notes: string | null;
+  nextDueDate: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

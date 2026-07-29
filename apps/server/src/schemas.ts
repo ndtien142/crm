@@ -251,3 +251,84 @@ export const assetImportSchema = z.object({
     .min(1)
     .max(2000),
 });
+
+// ── Checklist templates & Inspections (P3) ──────────────────────────────────
+
+const inspectionTypeSchema = z.enum([
+  'routine',
+  'annual',
+  'fire_drill',
+  'electrical',
+  'kiem_dinh',
+  'other',
+]);
+const inspectionStatusSchema = z.enum(['scheduled', 'in_progress', 'passed', 'failed', 'canceled']);
+const inspectionPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']);
+const checklistItemSchema = z.object({
+  key: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+});
+const resultItemSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  pass: z.boolean(),
+  note: z.string().optional(),
+});
+const evidenceSchema = z.object({ url: z.string().url(), caption: z.string().optional() });
+
+export const checklistTemplateQuerySchema = z.object({
+  inspectionType: inspectionTypeSchema.optional(),
+  assetCategory: assetCategorySchema.optional(),
+  includeInactive: z.coerce.boolean().optional(),
+});
+
+export const createChecklistTemplateSchema = z.object({
+  name: z.string().trim().min(1),
+  inspectionType: inspectionTypeSchema,
+  assetCategory: assetCategorySchema.nullable().optional(),
+  items: z.array(checklistItemSchema).min(1),
+  isActive: z.boolean().optional(),
+});
+
+export const updateChecklistTemplateSchema = createChecklistTemplateSchema.partial();
+
+export const inspectionQuerySchema = pageQuerySchema.extend({
+  siteId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  type: inspectionTypeSchema.optional(),
+  status: inspectionStatusSchema.optional(),
+  inspectorId: z.string().uuid().optional(),
+  priority: inspectionPrioritySchema.optional(),
+  sort: z.enum(['recent', 'scheduled']).optional(),
+});
+
+export const createInspectionSchema = z.object({
+  // Branch + customer are derived from the site.
+  siteId: z.string().uuid(),
+  assetId: z.string().uuid().nullable().optional(),
+  type: inspectionTypeSchema.default('routine'),
+  templateId: z.string().uuid().nullable().optional(),
+  inspectorId: z.string().uuid().nullable().optional(),
+  scheduledDate: dateStr.optional(),
+  priority: inspectionPrioritySchema.optional(),
+  notes: z.string().trim().optional(),
+});
+
+export const updateInspectionSchema = z.object({
+  inspectorId: z.string().uuid().nullable().optional(),
+  scheduledDate: dateStr.nullable().optional(),
+  priority: inspectionPrioritySchema.optional(),
+  status: inspectionStatusSchema.optional(),
+  notes: z.string().trim().nullable().optional(),
+});
+
+/** Completing an inspection records the outcome and rolls the asset's due date. */
+export const completeInspectionSchema = z.object({
+  status: z.enum(['passed', 'failed']),
+  performedDate: dateStr.optional(),
+  result: z.array(resultItemSchema).optional(),
+  evidence: z.array(evidenceSchema).optional(),
+  nextDueDate: dateStr.optional(),
+  notes: z.string().trim().optional(),
+});

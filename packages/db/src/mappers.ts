@@ -3,9 +3,25 @@
  * public shape (e.g. `User` never carries `passwordHash`).
  */
 
-import type { Asset, Branch, Customer, Site, User } from '@firecare/types';
+import type {
+  Asset,
+  Branch,
+  ChecklistTemplate,
+  Customer,
+  Inspection,
+  Site,
+  User,
+} from '@firecare/types';
 // Value import (not `import type`): the table objects back the `$inferSelect` row types.
-import { assets, branches, customers, sites, users } from './schema';
+import {
+  assets,
+  branches,
+  checklistTemplates,
+  customers,
+  inspections,
+  sites,
+  users,
+} from './schema';
 
 type BranchRow = typeof branches.$inferSelect;
 type UserRow = typeof users.$inferSelect;
@@ -119,6 +135,47 @@ export function toAsset(row: AssetRow): Asset {
     locationNote: row.locationNote,
     photoUrl: row.photoUrl,
     notes: row.notes,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+type ChecklistTemplateRow = typeof checklistTemplates.$inferSelect;
+type InspectionRow = typeof inspections.$inferSelect;
+
+export function toChecklistTemplate(row: ChecklistTemplateRow): ChecklistTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    inspectionType: row.inspectionType,
+    assetCategory: row.assetCategory,
+    items: row.items,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function toInspection(row: InspectionRow): Inspection {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    siteId: row.siteId,
+    assetId: row.assetId,
+    customerId: row.customerId,
+    code: row.code,
+    type: row.type,
+    templateId: row.templateId,
+    inspectorId: row.inspectorId,
+    scheduledDate: row.scheduledDate,
+    performedDate: row.performedDate,
+    status: row.status,
+    priority: row.priority,
+    result: row.result,
+    evidence: row.evidence,
+    notes: row.notes,
+    nextDueDate: row.nextDueDate,
     createdById: row.createdById,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

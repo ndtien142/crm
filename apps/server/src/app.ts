@@ -16,11 +16,14 @@ import type { AppConfig } from './config';
 import { registerErrorHandling } from './lib/errors';
 import { installPrincipal } from './lib/principal';
 import { createTokenService } from './lib/tokens';
+import { startInspectionSweep } from './lib/inspection-sweep';
 import { registerAssetRoutes } from './routes/assets';
 import { registerAuthRoutes } from './routes/auth';
 import { registerBranchRoutes } from './routes/branches';
+import { registerChecklistTemplateRoutes } from './routes/checklist-templates';
 import { registerCustomerRoutes } from './routes/customers';
 import { registerHealthRoutes } from './routes/health';
+import { registerInspectionRoutes } from './routes/inspections';
 import { registerSiteRoutes } from './routes/sites';
 import { registerUserRoutes } from './routes/users';
 
@@ -55,6 +58,15 @@ export async function buildApp(
   registerCustomerRoutes(app, repos);
   registerSiteRoutes(app, repos);
   registerAssetRoutes(app, repos);
+  registerChecklistTemplateRoutes(app, repos);
+  registerInspectionRoutes(app, repos);
+
+  // Auto-schedule inspections for due assets — only on a real boot (skip in tests
+  // that inject repos, so no timer leaks into the test process).
+  if (!deps?.repos && config.databaseUrl) {
+    const stopSweep = startInspectionSweep(repos, { leadDays: 30 });
+    app.addHook('onClose', () => stopSweep());
+  }
 
   return app;
 }

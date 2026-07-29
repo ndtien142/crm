@@ -11,6 +11,7 @@ import {
   date,
   doublePrecision,
   index,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -256,5 +257,88 @@ export const assets = pgTable(
     index('assets_branch_idx').on(t.branchId),
     index('assets_next_due_idx').on(t.nextDueDate),
     uniqueIndex('assets_qr_branch_idx').on(t.branchId, t.qrCode),
+  ],
+);
+
+// ── Inspections (P3) ────────────────────────────────────────────────────────
+
+export const inspectionTypeEnum = pgEnum('inspection_type', [
+  'routine',
+  'annual',
+  'fire_drill',
+  'electrical',
+  'kiem_dinh',
+  'other',
+]);
+
+export const inspectionStatusEnum = pgEnum('inspection_status', [
+  'scheduled',
+  'in_progress',
+  'passed',
+  'failed',
+  'canceled',
+]);
+
+export const inspectionPriorityEnum = pgEnum('inspection_priority', [
+  'low',
+  'normal',
+  'high',
+  'urgent',
+]);
+
+export const checklistTemplates = pgTable('checklist_templates', {
+  id,
+  name: text('name').notNull(),
+  inspectionType: inspectionTypeEnum('inspection_type').notNull().default('routine'),
+  assetCategory: assetCategoryEnum('asset_category'),
+  items: jsonb('items')
+    .$type<Array<{ key: string; label: string }>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  isActive: boolean('is_active').notNull().default(true),
+  ...timestamps,
+});
+
+export const inspections = pgTable(
+  'inspections',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    assetId: uuid('asset_id').references(() => assets.id, { onDelete: 'set null' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    type: inspectionTypeEnum('type').notNull().default('routine'),
+    templateId: uuid('template_id').references(() => checklistTemplates.id, { onDelete: 'set null' }),
+    inspectorId: uuid('inspector_id').references(() => users.id, { onDelete: 'set null' }),
+    scheduledDate: date('scheduled_date', { mode: 'string' }),
+    performedDate: date('performed_date', { mode: 'string' }),
+    status: inspectionStatusEnum('status').notNull().default('scheduled'),
+    priority: inspectionPriorityEnum('priority').notNull().default('normal'),
+    result: jsonb('result')
+      .$type<Array<{ key: string; label: string; pass: boolean; note?: string }>>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    evidence: jsonb('evidence')
+      .$type<Array<{ url: string; caption?: string }>>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    notes: text('notes'),
+    nextDueDate: date('next_due_date', { mode: 'string' }),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('inspections_branch_idx').on(t.branchId),
+    index('inspections_site_idx').on(t.siteId),
+    index('inspections_asset_idx').on(t.assetId),
+    index('inspections_status_idx').on(t.status),
+    index('inspections_scheduled_idx').on(t.scheduledDate),
   ],
 );

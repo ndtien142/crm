@@ -9,10 +9,18 @@ import type {
   AssetCategory,
   AssetStatus,
   Branch,
+  ChecklistItem,
+  ChecklistTemplate,
   Customer,
   CustomerSource,
   CustomerStatus,
   CustomerType,
+  Inspection,
+  InspectionEvidence,
+  InspectionPriority,
+  InspectionResultItem,
+  InspectionStatus,
+  InspectionType,
   Role,
   Site,
   SiteType,
@@ -263,6 +271,78 @@ export interface AssetRepository {
   ): Promise<{ inserted: number; skipped: number; skippedRefs: string[] }>;
 }
 
+// ── Checklist templates (company-wide, not branch-scoped) ───────────────────
+
+export interface NewChecklistTemplate {
+  name: string;
+  inspectionType: InspectionType;
+  assetCategory?: AssetCategory | null;
+  items: ChecklistItem[];
+  isActive?: boolean;
+}
+
+export type UpdateChecklistTemplate = Partial<NewChecklistTemplate>;
+
+export interface ChecklistTemplateRepository {
+  list(query: {
+    inspectionType?: InspectionType;
+    assetCategory?: AssetCategory;
+    includeInactive?: boolean;
+  }): Promise<ChecklistTemplate[]>;
+  findById(id: string): Promise<ChecklistTemplate | null>;
+  create(input: NewChecklistTemplate): Promise<ChecklistTemplate>;
+  update(id: string, patch: UpdateChecklistTemplate): Promise<ChecklistTemplate | null>;
+  delete(id: string): Promise<boolean>;
+}
+
+// ── Inspections ─────────────────────────────────────────────────────────────
+
+export interface NewInspection {
+  branchId: string;
+  siteId: string;
+  assetId?: string | null;
+  customerId: string;
+  code?: string;
+  type: InspectionType;
+  templateId?: string | null;
+  inspectorId?: string | null;
+  scheduledDate?: string | null;
+  performedDate?: string | null;
+  status?: InspectionStatus;
+  priority?: InspectionPriority;
+  result?: InspectionResultItem[];
+  evidence?: InspectionEvidence[];
+  notes?: string | null;
+  nextDueDate?: string | null;
+  createdById?: string | null;
+}
+
+export type UpdateInspection = Partial<
+  Omit<NewInspection, 'branchId' | 'siteId' | 'customerId' | 'createdById'>
+>;
+
+export interface InspectionListQuery extends PageQuery {
+  scope: BranchScope;
+  siteId?: string;
+  assetId?: string;
+  customerId?: string;
+  type?: InspectionType;
+  status?: InspectionStatus;
+  inspectorId?: string;
+  priority?: InspectionPriority;
+  sort?: 'recent' | 'scheduled';
+}
+
+export interface InspectionRepository {
+  list(query: InspectionListQuery): Promise<Paginated<Inspection>>;
+  findById(id: string, scope: BranchScope): Promise<Inspection | null>;
+  create(input: NewInspection): Promise<Inspection>;
+  update(id: string, patch: UpdateInspection, scope: BranchScope): Promise<Inspection | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+  /** Sweep helper: does the asset already have a scheduled/in_progress inspection? */
+  hasOpenForAsset(assetId: string): Promise<boolean>;
+}
+
 // ── The bundle ──────────────────────────────────────────────────────────────
 
 export interface RepositoryBundle {
@@ -272,4 +352,6 @@ export interface RepositoryBundle {
   customers: CustomerRepository;
   sites: SiteRepository;
   assets: AssetRepository;
+  checklistTemplates: ChecklistTemplateRepository;
+  inspections: InspectionRepository;
 }

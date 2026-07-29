@@ -13,12 +13,19 @@ import type {
   Branch,
   BranchRepository,
   BranchScope,
+  ChecklistTemplate,
+  ChecklistTemplateRepository,
   Customer,
   CustomerListQuery,
   CustomerRepository,
+  Inspection,
+  InspectionListQuery,
+  InspectionRepository,
   NewAsset,
   NewBranch,
+  NewChecklistTemplate,
   NewCustomer,
+  NewInspection,
   NewSite,
   NewUser,
   PageQuery,
@@ -31,7 +38,9 @@ import type {
   SiteRepository,
   UpdateAsset,
   UpdateBranch,
+  UpdateChecklistTemplate,
   UpdateCustomer,
+  UpdateInspection,
   UpdateSite,
   UpdateUser,
   User,
@@ -487,6 +496,135 @@ class MockAssetRepository implements AssetRepository {
   }
 }
 
+class MockChecklistTemplateRepository implements ChecklistTemplateRepository {
+  constructor(private readonly store: ChecklistTemplate[]) {}
+
+  async list(query: {
+    inspectionType?: ChecklistTemplate['inspectionType'];
+    assetCategory?: NonNullable<ChecklistTemplate['assetCategory']>;
+    includeInactive?: boolean;
+  }): Promise<ChecklistTemplate[]> {
+    return this.store
+      .filter(
+        (t) =>
+          (query.includeInactive || t.isActive) &&
+          (!query.inspectionType || t.inspectionType === query.inspectionType) &&
+          (!query.assetCategory || t.assetCategory === query.assetCategory),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async findById(id: string): Promise<ChecklistTemplate | null> {
+    return this.store.find((t) => t.id === id) ?? null;
+  }
+
+  async create(input: NewChecklistTemplate): Promise<ChecklistTemplate> {
+    const t: ChecklistTemplate = {
+      id: randomUUID(),
+      name: input.name,
+      inspectionType: input.inspectionType,
+      assetCategory: input.assetCategory ?? null,
+      items: input.items,
+      isActive: input.isActive ?? true,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(t);
+    return t;
+  }
+
+  async update(id: string, patch: UpdateChecklistTemplate): Promise<ChecklistTemplate | null> {
+    const t = this.store.find((x) => x.id === id);
+    if (!t) return null;
+    Object.assign(t, patch, { updatedAt: now() });
+    return t;
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id);
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+}
+
+class MockInspectionRepository implements InspectionRepository {
+  constructor(private readonly store: Inspection[]) {}
+
+  async list(query: InspectionListQuery): Promise<Paginated<Inspection>> {
+    const filtered = this.store
+      .filter(
+        (x) =>
+          inBranch(x.branchId, query.scope) &&
+          (!query.siteId || x.siteId === query.siteId) &&
+          (!query.assetId || x.assetId === query.assetId) &&
+          (!query.customerId || x.customerId === query.customerId) &&
+          (!query.type || x.type === query.type) &&
+          (!query.status || x.status === query.status) &&
+          (!query.inspectorId || x.inspectorId === query.inspectorId) &&
+          (!query.priority || x.priority === query.priority),
+      )
+      .sort((a, b) =>
+        query.sort === 'scheduled'
+          ? (a.scheduledDate ?? '9999-99-99').localeCompare(b.scheduledDate ?? '9999-99-99')
+          : b.createdAt.localeCompare(a.createdAt),
+      );
+    return paginate(filtered, query);
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<Inspection | null> {
+    const x = this.store.find((i) => i.id === id);
+    return x && inBranch(x.branchId, scope) ? x : null;
+  }
+
+  async create(input: NewInspection): Promise<Inspection> {
+    const x: Inspection = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      siteId: input.siteId,
+      assetId: input.assetId ?? null,
+      customerId: input.customerId,
+      code: input.code ?? `KT-${randomUUID().slice(0, 8).toUpperCase()}`,
+      type: input.type,
+      templateId: input.templateId ?? null,
+      inspectorId: input.inspectorId ?? null,
+      scheduledDate: input.scheduledDate ?? null,
+      performedDate: input.performedDate ?? null,
+      status: input.status ?? 'scheduled',
+      priority: input.priority ?? 'normal',
+      result: input.result ?? [],
+      evidence: input.evidence ?? [],
+      notes: input.notes ?? null,
+      nextDueDate: input.nextDueDate ?? null,
+      createdById: input.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(x);
+    return x;
+  }
+
+  async update(id: string, patch: UpdateInspection, scope: BranchScope): Promise<Inspection | null> {
+    const x = this.store.find((i) => i.id === id);
+    if (!x || !inBranch(x.branchId, scope)) return null;
+    Object.assign(x, patch, { updatedAt: now() });
+    return x;
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+
+  async hasOpenForAsset(assetId: string): Promise<boolean> {
+    return this.store.some(
+      (x) => x.assetId === assetId && (x.status === 'scheduled' || x.status === 'in_progress'),
+    );
+  }
+}
+
 /** Build a fresh mock bundle. Pass seed data for tests. */
 export function createMockRepositories(seed?: {
   users?: (User & { passwordHash: string })[];
@@ -494,6 +632,8 @@ export function createMockRepositories(seed?: {
   customers?: Customer[];
   sites?: Site[];
   assets?: Asset[];
+  checklistTemplates?: ChecklistTemplate[];
+  inspections?: Inspection[];
 }): RepositoryBundle {
   return {
     auth: new MockAuthRepository(),
@@ -502,5 +642,7 @@ export function createMockRepositories(seed?: {
     customers: new MockCustomerRepository(seed?.customers ?? []),
     sites: new MockSiteRepository(seed?.sites ?? []),
     assets: new MockAssetRepository(seed?.assets ?? []),
+    checklistTemplates: new MockChecklistTemplateRepository(seed?.checklistTemplates ?? []),
+    inspections: new MockInspectionRepository(seed?.inspections ?? []),
   };
 }

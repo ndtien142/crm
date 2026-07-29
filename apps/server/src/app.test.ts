@@ -5,10 +5,11 @@
  */
 
 import { createMockRepositories } from '@firecare/core';
-import type { Branch, Customer, User } from '@firecare/types';
+import type { Asset, Branch, Customer, Site, User } from '@firecare/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app';
+import { runInspectionSweep } from './lib/inspection-sweep';
 import type { AppConfig } from './config';
 import { hashPassword } from './lib/password';
 
@@ -391,5 +392,91 @@ describe('sites & assets (P2)', () => {
       payload: { customerId: CUST_A, name: 'X' },
     });
     expect(create.statusCode).toBe(403);
+  });
+});
+
+describe('inspections (P3)', () => {
+  it('creates + completes an inspection and rolls the asset due date', async () => {
+    const t = await token('staff@f.local');
+    const site = JSON.parse(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/sites',
+          headers: bearer(t),
+          payload: { customerId: CUST_A, name: 'Site KT' },
+        })
+      ).body,
+    ).data;
+    const asset = JSON.parse(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/assets',
+          headers: bearer(t),
+          payload: { siteId: site.id, name: 'Bình KT', nextDueDate: '2026-01-01' },
+        })
+      ).body,
+    ).data;
+
+    const insp = JSON.parse(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/inspections',
+          headers: bearer(t),
+          payload: { siteId: site.id, assetId: asset.id, type: 'annual', priority: 'high' },
+        })
+      ).body,
+    ).data;
+    expect(insp.code).toMatch(/^KT-/);
+    expect(insp.status).toBe('scheduled');
+
+    const done = await app.inject({
+      method: 'POST',
+      url: `/api/inspections/${insp.id}/complete`,
+      headers: bearer(t),
+      payload: {
+        status: 'passed',
+        nextDueDate: '2027-01-01',
+        result: [{ key: 'ap', label: 'Áp suất', pass: true }],
+      },
+    });
+    expect(done.statusCode).toBe(200);
+    expect(JSON.parse(done.body).data.status).toBe('passed');
+
+    // The asset's due date + last-inspected roll forward.
+    const a2 = JSON.parse(
+      (await app.inject({ method: 'GET', url: `/api/assets/${asset.id}`, headers: bearer(t) })).body,
+    ).data;
+    expect(a2.nextDueDate).toBe('2027-01-01');
+    expect(a2.lastInspectedAt).toBeTruthy();
+  });
+});
+
+describe('inspection sweep (P3)', () => {
+  it('auto-creates a scheduled inspection for a due asset (idempotent)', async () => {
+    const ts = '2026-01-01T00:00:00.000Z';
+    const site: Site = {
+      id: 's1', branchId: BRANCH_A, customerId: CUST_A, name: 'S', code: null, type: 'building',
+      address: null, ward: null, district: null, city: null, lat: null, lng: null, notes: null,
+      createdById: null, createdAt: ts, updatedAt: ts,
+    };
+    const asset: Asset = {
+      id: 'a1', branchId: BRANCH_A, siteId: 's1', customerId: CUST_A, category: 'extinguisher',
+      name: 'Bình', serialNo: null, qrCode: 'FC-SWEEP1', manufacturer: null, capacity: null,
+      manufactureDate: null, installedAt: null, lastInspectedAt: null, nextDueDate: '2020-01-01',
+      status: 'active', locationNote: null, photoUrl: null, notes: null, createdById: null,
+      createdAt: ts, updatedAt: ts,
+    };
+    const repos = createMockRepositories({ sites: [site], assets: [asset] });
+
+    expect((await runInspectionSweep(repos, 30)).created).toBe(1);
+    expect((await runInspectionSweep(repos, 30)).created).toBe(0); // idempotent — open inspection exists
+
+    const list = await repos.inspections.list({ page: 1, pageSize: 10, scope: { allBranches: true } });
+    expect(list.total).toBe(1);
+    expect(list.items[0]!.status).toBe('scheduled');
+    expect(list.items[0]!.priority).toBe('urgent'); // overdue
   });
 });
