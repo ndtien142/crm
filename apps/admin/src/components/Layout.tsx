@@ -17,7 +17,6 @@ import {
   SheetTitle,
 } from '@firecare/ui';
 import {
-  Bell,
   CalendarDays,
   Flame,
   HeartHandshake,
@@ -32,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../store/auth';
 
 interface NavItem {
@@ -190,10 +190,7 @@ export default function Layout() {
           </div>
 
           <div className="ml-auto flex items-center gap-1">
-            <Button variant="ghost" size="icon" aria-label="Thông báo" className="relative">
-              <Bell className="size-5" />
-              <span className="absolute right-2 top-2 size-2 rounded-full bg-primary" />
-            </Button>
+            <NotificationBell />
             <ModeToggle />
             <UserMenu />
           </div>
