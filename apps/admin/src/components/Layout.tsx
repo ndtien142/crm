@@ -10,19 +10,27 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Input,
   ModeToggle,
+  Sheet,
+  SheetContent,
+  SheetTitle,
 } from '@firecare/ui';
 import {
+  Bell,
   CalendarDays,
   Flame,
   HeartHandshake,
   LayoutDashboard,
   LogOut,
   MapPin,
+  Menu,
+  Search,
   ShieldCheck,
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 
@@ -59,77 +67,144 @@ function initials(name?: string): string {
     .toUpperCase();
 }
 
-export default function Layout() {
+function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const user = useAuth((s) => s.user);
-  const logout = useAuth((s) => s.logout);
-  const navigate = useNavigate();
   const items = NAV.filter((n) => !n.roles || (user && n.roles.includes(user.role)));
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <aside className="flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2 px-5 py-4 text-lg font-bold">
-          <Flame className="size-6 text-primary" /> FireCare
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center gap-2 px-6 text-lg font-bold tracking-tight">
+        <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+          <Flame className="size-5" />
         </div>
-        <nav className="flex-1 space-y-1 px-3">
-          {items.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
-                )
-              }
-            >
-              <n.icon className="size-5" /> {n.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex items-center gap-2 border-t p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-auto flex-1 justify-start gap-2 px-2 py-2">
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                    {initials(user?.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-left leading-tight">
-                  <div className="text-sm font-medium">{user?.name}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {user ? ROLE_LABEL[user.role] : ''}
-                  </div>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
-                {user?.email}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={async () => {
-                  await logout();
-                  navigate('/');
-                }}
-              >
-                <LogOut className="size-4" /> Đăng xuất
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ModeToggle />
-        </div>
+        FireCare
+      </div>
+      <div className="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        Tổng quan
+      </div>
+      <nav className="flex-1 space-y-1 px-3">
+        {items.map((n) => (
+          <NavLink
+            key={n.to}
+            to={n.to}
+            end={n.end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
+              )
+            }
+          >
+            <n.icon className="size-4.5" /> {n.label}
+          </NavLink>
+        ))}
+      </nav>
+      <div className="p-4 text-xs text-muted-foreground">FireCare · PCCC · v0.1</div>
+    </div>
+  );
+}
+
+function UserMenu({ compact }: { compact?: boolean }) {
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
+  const navigate = useNavigate();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-auto gap-2 px-1.5 py-1.5">
+          <Avatar className="size-8">
+            <AvatarFallback className="bg-primary/10 text-xs text-primary">
+              {initials(user?.name)}
+            </AvatarFallback>
+          </Avatar>
+          {!compact && (
+            <div className="hidden text-left leading-tight sm:block">
+              <div className="text-sm font-medium">{user?.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {user ? ROLE_LABEL[user.role] : ''}
+              </div>
+            </div>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col">
+          <span className="font-medium">{user?.name}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">{user?.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={async () => {
+            await logout();
+            navigate('/');
+          }}
+        >
+          <LogOut className="size-4" /> Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export default function Layout() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex h-screen bg-muted/30 text-foreground">
+      {/* Desktop rail */}
+      <aside className="hidden w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground md:flex">
+        <SidebarBody />
       </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl p-6 md:p-8">
-          <Outlet />
-        </div>
-      </main>
+
+      {/* Mobile drawer */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="w-64 bg-sidebar p-0 text-sidebar-foreground">
+          <SheetTitle className="sr-only">Điều hướng</SheetTitle>
+          <SidebarBody onNavigate={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur md:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Mở menu"
+          >
+            <Menu className="size-5" />
+          </Button>
+
+          <div className="relative w-full max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <Input
+              className="rounded-full bg-muted/60 pl-9"
+              placeholder="Tìm kiếm nhanh…"
+              aria-label="Tìm kiếm"
+            />
+          </div>
+
+          <div className="ml-auto flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="Thông báo" className="relative">
+              <Bell className="size-5" />
+              <span className="absolute right-2 top-2 size-2 rounded-full bg-primary" />
+            </Button>
+            <ModeToggle />
+            <UserMenu />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
