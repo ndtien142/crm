@@ -22,6 +22,13 @@
       "when": 1785305642674,
       "tag": "0002_lean_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785306871184,
+      "tag": "0003_legal_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

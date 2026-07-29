@@ -5,6 +5,7 @@ import { DrizzleAuthRepository } from './repositories/auth';
 import { DrizzleBranchRepository } from './repositories/branch';
 import { DrizzleChecklistTemplateRepository } from './repositories/checklist-template';
 import { DrizzleCustomerRepository } from './repositories/customer';
+import { DrizzleFaultRepository } from './repositories/fault';
 import { DrizzleInspectionRepository } from './repositories/inspection';
 import { DrizzleSiteRepository } from './repositories/site';
 import { DrizzleUserRepository } from './repositories/user';
@@ -20,5 +21,6 @@ export function createDrizzleRepositories(db: Db): RepositoryBundle {
     assets: new DrizzleAssetRepository(db),
     checklistTemplates: new DrizzleChecklistTemplateRepository(db),
     inspections: new DrizzleInspectionRepository(db),
+    faults: new DrizzleFaultRepository(db),
   };
 }

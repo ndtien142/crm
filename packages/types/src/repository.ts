@@ -15,6 +15,9 @@ import type {
   CustomerSource,
   CustomerStatus,
   CustomerType,
+  Fault,
+  FaultSeverity,
+  FaultStatus,
   Inspection,
   InspectionEvidence,
   InspectionPriority,
@@ -343,6 +346,48 @@ export interface InspectionRepository {
   hasOpenForAsset(assetId: string): Promise<boolean>;
 }
 
+// ── Faults & Repairs ────────────────────────────────────────────────────────
+
+export interface NewFault {
+  branchId: string;
+  assetId: string;
+  siteId: string;
+  customerId: string;
+  inspectionId?: string | null;
+  severity?: FaultSeverity;
+  description: string;
+  status?: FaultStatus;
+  assigneeId?: string | null;
+  foundAt?: string;
+  createdById?: string | null;
+}
+
+export type UpdateFault = Partial<
+  Pick<NewFault, 'severity' | 'description' | 'status' | 'assigneeId'>
+>;
+
+export interface FaultListQuery extends PageQuery {
+  scope: BranchScope;
+  assetId?: string;
+  siteId?: string;
+  customerId?: string;
+  status?: FaultStatus;
+  severity?: FaultSeverity;
+}
+
+export interface FaultRepository {
+  list(query: FaultListQuery): Promise<Paginated<Fault>>;
+  findById(id: string, scope: BranchScope): Promise<Fault | null>;
+  create(input: NewFault): Promise<Fault>;
+  update(id: string, patch: UpdateFault, scope: BranchScope): Promise<Fault | null>;
+  resolve(
+    id: string,
+    input: { resolvedAt: string; resolutionNote?: string | null },
+    scope: BranchScope,
+  ): Promise<Fault | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+}
+
 // ── The bundle ──────────────────────────────────────────────────────────────
 
 export interface RepositoryBundle {
@@ -354,4 +399,5 @@ export interface RepositoryBundle {
   assets: AssetRepository;
   checklistTemplates: ChecklistTemplateRepository;
   inspections: InspectionRepository;
+  faults: FaultRepository;
 }

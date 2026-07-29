@@ -22,6 +22,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { registerBranchRoutes } from './routes/branches';
 import { registerChecklistTemplateRoutes } from './routes/checklist-templates';
 import { registerCustomerRoutes } from './routes/customers';
+import { registerFaultRoutes } from './routes/faults';
 import { registerHealthRoutes } from './routes/health';
 import { registerInspectionRoutes } from './routes/inspections';
 import { registerSiteRoutes } from './routes/sites';
@@ -60,6 +61,7 @@ export async function buildApp(
   registerAssetRoutes(app, repos);
   registerChecklistTemplateRoutes(app, repos);
   registerInspectionRoutes(app, repos);
+  registerFaultRoutes(app, repos);
 
   // Auto-schedule inspections for due assets — only on a real boot (skip in tests
   // that inject repos, so no timer leaks into the test process).

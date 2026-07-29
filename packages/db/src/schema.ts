@@ -342,3 +342,42 @@ export const inspections = pgTable(
     index('inspections_scheduled_idx').on(t.scheduledDate),
   ],
 );
+
+// ── Faults & Repairs (P4) ───────────────────────────────────────────────────
+
+export const faultSeverityEnum = pgEnum('fault_severity', ['low', 'medium', 'high']);
+export const faultStatusEnum = pgEnum('fault_status', ['open', 'in_repair', 'resolved']);
+
+export const faults = pgTable(
+  'faults',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    inspectionId: uuid('inspection_id').references(() => inspections.id, { onDelete: 'set null' }),
+    severity: faultSeverityEnum('severity').notNull().default('medium'),
+    description: text('description').notNull(),
+    status: faultStatusEnum('status').notNull().default('open'),
+    assigneeId: uuid('assignee_id').references(() => users.id, { onDelete: 'set null' }),
+    foundAt: date('found_at', { mode: 'string' }).notNull().defaultNow(),
+    resolvedAt: date('resolved_at', { mode: 'string' }),
+    resolutionNote: text('resolution_note'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('faults_branch_idx').on(t.branchId),
+    index('faults_asset_idx').on(t.assetId),
+    index('faults_status_idx').on(t.status),
+  ],
+);

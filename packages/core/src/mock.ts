@@ -18,6 +18,9 @@ import type {
   Customer,
   CustomerListQuery,
   CustomerRepository,
+  Fault,
+  FaultListQuery,
+  FaultRepository,
   Inspection,
   InspectionListQuery,
   InspectionRepository,
@@ -25,6 +28,7 @@ import type {
   NewBranch,
   NewChecklistTemplate,
   NewCustomer,
+  NewFault,
   NewInspection,
   NewSite,
   NewUser,
@@ -40,6 +44,7 @@ import type {
   UpdateBranch,
   UpdateChecklistTemplate,
   UpdateCustomer,
+  UpdateFault,
   UpdateInspection,
   UpdateSite,
   UpdateUser,
@@ -625,6 +630,81 @@ class MockInspectionRepository implements InspectionRepository {
   }
 }
 
+class MockFaultRepository implements FaultRepository {
+  constructor(private readonly store: Fault[]) {}
+
+  async list(query: FaultListQuery): Promise<Paginated<Fault>> {
+    const filtered = this.store
+      .filter(
+        (f) =>
+          inBranch(f.branchId, query.scope) &&
+          (!query.assetId || f.assetId === query.assetId) &&
+          (!query.siteId || f.siteId === query.siteId) &&
+          (!query.customerId || f.customerId === query.customerId) &&
+          (!query.status || f.status === query.status) &&
+          (!query.severity || f.severity === query.severity),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return paginate(filtered, query);
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<Fault | null> {
+    const f = this.store.find((x) => x.id === id);
+    return f && inBranch(f.branchId, scope) ? f : null;
+  }
+
+  async create(input: NewFault): Promise<Fault> {
+    const f: Fault = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      assetId: input.assetId,
+      siteId: input.siteId,
+      customerId: input.customerId,
+      inspectionId: input.inspectionId ?? null,
+      severity: input.severity ?? 'medium',
+      description: input.description,
+      status: input.status ?? 'open',
+      assigneeId: input.assigneeId ?? null,
+      foundAt: input.foundAt ?? now().slice(0, 10),
+      resolvedAt: null,
+      resolutionNote: null,
+      createdById: input.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(f);
+    return f;
+  }
+
+  async update(id: string, patch: UpdateFault, scope: BranchScope): Promise<Fault | null> {
+    const f = this.store.find((x) => x.id === id);
+    if (!f || !inBranch(f.branchId, scope)) return null;
+    Object.assign(f, patch, { updatedAt: now() });
+    return f;
+  }
+
+  async resolve(
+    id: string,
+    input: { resolvedAt: string; resolutionNote?: string | null },
+    scope: BranchScope,
+  ): Promise<Fault | null> {
+    const f = this.store.find((x) => x.id === id);
+    if (!f || !inBranch(f.branchId, scope)) return null;
+    f.status = 'resolved';
+    f.resolvedAt = input.resolvedAt;
+    f.resolutionNote = input.resolutionNote ?? null;
+    f.updatedAt = now();
+    return f;
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+}
+
 /** Build a fresh mock bundle. Pass seed data for tests. */
 export function createMockRepositories(seed?: {
   users?: (User & { passwordHash: string })[];
@@ -634,6 +714,7 @@ export function createMockRepositories(seed?: {
   assets?: Asset[];
   checklistTemplates?: ChecklistTemplate[];
   inspections?: Inspection[];
+  faults?: Fault[];
 }): RepositoryBundle {
   return {
     auth: new MockAuthRepository(),
@@ -644,5 +725,6 @@ export function createMockRepositories(seed?: {
     assets: new MockAssetRepository(seed?.assets ?? []),
     checklistTemplates: new MockChecklistTemplateRepository(seed?.checklistTemplates ?? []),
     inspections: new MockInspectionRepository(seed?.inspections ?? []),
+    faults: new MockFaultRepository(seed?.faults ?? []),
   };
 }

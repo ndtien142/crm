@@ -216,3 +216,28 @@ export interface Inspection {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Faults & Repairs / sự cố (P4) ────────────────────────────────────────────
+
+export type FaultSeverity = 'low' | 'medium' | 'high';
+export type FaultStatus = 'open' | 'in_repair' | 'resolved';
+
+export interface Fault {
+  id: string;
+  branchId: string;
+  assetId: string;
+  siteId: string;
+  customerId: string;
+  /** The inspection that surfaced this fault, if any. */
+  inspectionId: string | null;
+  severity: FaultSeverity;
+  description: string;
+  status: FaultStatus;
+  assigneeId: string | null;
+  foundAt: string;
+  resolvedAt: string | null;
+  resolutionNote: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

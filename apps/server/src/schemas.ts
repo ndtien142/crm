@@ -332,3 +332,37 @@ export const completeInspectionSchema = z.object({
   nextDueDate: dateStr.optional(),
   notes: z.string().trim().optional(),
 });
+
+// ── Faults & Repairs (P4) ────────────────────────────────────────────────────
+
+const faultSeveritySchema = z.enum(['low', 'medium', 'high']);
+const faultStatusSchema = z.enum(['open', 'in_repair', 'resolved']);
+
+export const faultQuerySchema = pageQuerySchema.extend({
+  assetId: z.string().uuid().optional(),
+  siteId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  status: faultStatusSchema.optional(),
+  severity: faultSeveritySchema.optional(),
+});
+
+export const createFaultSchema = z.object({
+  // Branch/site/customer are derived from the asset.
+  assetId: z.string().uuid(),
+  inspectionId: z.string().uuid().nullable().optional(),
+  severity: faultSeveritySchema.optional(),
+  description: z.string().trim().min(1),
+  assigneeId: z.string().uuid().nullable().optional(),
+});
+
+export const updateFaultSchema = z.object({
+  severity: faultSeveritySchema.optional(),
+  description: z.string().trim().min(1).optional(),
+  status: faultStatusSchema.optional(),
+  assigneeId: z.string().uuid().nullable().optional(),
+});
+
+export const resolveFaultSchema = z.object({
+  resolutionNote: z.string().trim().optional(),
+  resolvedDate: dateStr.optional(),
+});

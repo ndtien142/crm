@@ -8,6 +8,7 @@ import type {
   Branch,
   ChecklistTemplate,
   Customer,
+  Fault,
   Inspection,
   Site,
   User,
@@ -18,6 +19,7 @@ import {
   branches,
   checklistTemplates,
   customers,
+  faults,
   inspections,
   sites,
   users,
@@ -176,6 +178,29 @@ export function toInspection(row: InspectionRow): Inspection {
     evidence: row.evidence,
     notes: row.notes,
     nextDueDate: row.nextDueDate,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+type FaultRow = typeof faults.$inferSelect;
+
+export function toFault(row: FaultRow): Fault {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    assetId: row.assetId,
+    siteId: row.siteId,
+    customerId: row.customerId,
+    inspectionId: row.inspectionId,
+    severity: row.severity,
+    description: row.description,
+    status: row.status,
+    assigneeId: row.assigneeId,
+    foundAt: row.foundAt,
+    resolvedAt: row.resolvedAt,
+    resolutionNote: row.resolutionNote,
     createdById: row.createdById,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

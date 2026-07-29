@@ -480,3 +480,64 @@ describe('inspection sweep (P3)', () => {
     expect(list.items[0]!.priority).toBe('urgent'); // overdue
   });
 });
+
+describe('faults & repairs (P4)', () => {
+  it('failing an inspection opens a fault + marks the asset faulty; resolving reactivates it', async () => {
+    const t = await token('staff@f.local');
+    const site = JSON.parse(
+      (await app.inject({ method: 'POST', url: '/api/sites', headers: bearer(t), payload: { customerId: CUST_A, name: 'Site Fault' } })).body,
+    ).data;
+    const asset = JSON.parse(
+      (await app.inject({ method: 'POST', url: '/api/assets', headers: bearer(t), payload: { siteId: site.id, name: 'Bình lỗi' } })).body,
+    ).data;
+    const insp = JSON.parse(
+      (await app.inject({ method: 'POST', url: '/api/inspections', headers: bearer(t), payload: { siteId: site.id, assetId: asset.id, type: 'routine' } })).body,
+    ).data;
+
+    // Fail the inspection → a fault is opened automatically.
+    await app.inject({
+      method: 'POST',
+      url: `/api/inspections/${insp.id}/complete`,
+      headers: bearer(t),
+      payload: { status: 'failed' },
+    });
+
+    const faults = JSON.parse(
+      (await app.inject({ method: 'GET', url: `/api/faults?assetId=${asset.id}`, headers: bearer(t) })).body,
+    );
+    expect(faults.meta.total).toBe(1);
+    expect(faults.data[0].status).toBe('open');
+    expect(faults.data[0].inspectionId).toBe(insp.id);
+
+    const faulty = JSON.parse(
+      (await app.inject({ method: 'GET', url: `/api/assets/${asset.id}`, headers: bearer(t) })).body,
+    ).data;
+    expect(faulty.status).toBe('faulty');
+
+    // Resolve the fault → asset returns to active.
+    const resolved = await app.inject({
+      method: 'POST',
+      url: `/api/faults/${faults.data[0].id}/resolve`,
+      headers: bearer(t),
+      payload: { resolutionNote: 'Đã thay bình mới' },
+    });
+    expect(resolved.statusCode).toBe(200);
+    expect(JSON.parse(resolved.body).data.status).toBe('resolved');
+
+    const back = JSON.parse(
+      (await app.inject({ method: 'GET', url: `/api/assets/${asset.id}`, headers: bearer(t) })).body,
+    ).data;
+    expect(back.status).toBe('active');
+  });
+
+  it('accountant cannot create a fault (403)', async () => {
+    const acc = await token('acc@f.local');
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/faults',
+      headers: bearer(acc),
+      payload: { assetId: '00000000-0000-0000-0000-000000000000', description: 'x' },
+    });
+    expect(r.statusCode).toBe(403);
+  });
+});

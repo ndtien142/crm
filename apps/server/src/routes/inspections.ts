@@ -105,6 +105,20 @@ export function registerInspectionRoutes(app: FastifyInstance, repos: Repository
         },
         scope,
       );
+
+      // A failed check opens a fault so the repair is tracked (P4).
+      if (body.status === 'failed') {
+        await repos.faults.create({
+          branchId: existing.branchId,
+          assetId: existing.assetId,
+          siteId: existing.siteId,
+          customerId: existing.customerId,
+          inspectionId: existing.id,
+          severity: 'high',
+          description: `Kiểm tra ${existing.code} không đạt`,
+          createdById: principal.userId,
+        });
+      }
     }
     return ok(reply, inspection);
   });
