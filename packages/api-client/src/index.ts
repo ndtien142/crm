@@ -9,9 +9,11 @@
 import type {
   Asset,
   Branch,
+  ChecklistTemplate,
   Customer,
   CustomerType,
   ErrorCode,
+  Inspection,
   PageMeta,
   Role,
   Site,
@@ -204,6 +206,41 @@ export function createApiClient(opts: ApiClientOptions) {
       data<{ inserted: number; skipped: number; skippedRefs: string[] }>(
         request('POST', '/api/assets/import', body),
       ),
+
+    // ── inspections ──
+    listInspections: (q?: {
+      page?: number;
+      pageSize?: number;
+      siteId?: string;
+      assetId?: string;
+      customerId?: string;
+      type?: string;
+      status?: string;
+      inspectorId?: string;
+      priority?: string;
+      sort?: 'recent' | 'scheduled';
+    }) => page<Inspection>(request('GET', '/api/inspections' + toQuery(q))),
+    getInspection: (id: string) => data<Inspection>(request('GET', `/api/inspections/${id}`)),
+    createInspection: (body: Record<string, unknown>) =>
+      data<Inspection>(request('POST', '/api/inspections', body)),
+    updateInspection: (id: string, body: Record<string, unknown>) =>
+      data<Inspection>(request('PATCH', `/api/inspections/${id}`, body)),
+    completeInspection: (id: string, body: Record<string, unknown>) =>
+      data<Inspection>(request('POST', `/api/inspections/${id}/complete`, body)),
+    deleteInspection: (id: string) => request<void>('DELETE', `/api/inspections/${id}`),
+
+    // ── checklist templates ──
+    listChecklistTemplates: (q?: {
+      inspectionType?: string;
+      assetCategory?: string;
+      includeInactive?: boolean;
+    }) => data<ChecklistTemplate[]>(request('GET', '/api/checklist-templates' + toQuery(q))),
+    createChecklistTemplate: (body: Record<string, unknown>) =>
+      data<ChecklistTemplate>(request('POST', '/api/checklist-templates', body)),
+    updateChecklistTemplate: (id: string, body: Record<string, unknown>) =>
+      data<ChecklistTemplate>(request('PATCH', `/api/checklist-templates/${id}`, body)),
+    deleteChecklistTemplate: (id: string) =>
+      request<void>('DELETE', `/api/checklist-templates/${id}`),
   };
 }
 

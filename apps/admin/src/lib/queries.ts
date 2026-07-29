@@ -166,3 +166,59 @@ export function useImportAssets() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
   });
 }
+
+// ── inspections ──
+export interface InspectionFilters {
+  page: number;
+  pageSize: number;
+  siteId?: string;
+  status?: string;
+  type?: string;
+  priority?: string;
+  sort?: 'recent' | 'scheduled';
+}
+
+export function useInspections(filters: InspectionFilters) {
+  return useQuery({
+    queryKey: ['inspections', filters],
+    queryFn: () =>
+      api.listInspections({
+        page: filters.page,
+        pageSize: filters.pageSize,
+        siteId: filters.siteId || undefined,
+        status: filters.status || undefined,
+        type: filters.type || undefined,
+        priority: filters.priority || undefined,
+        sort: filters.sort,
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCreateInspection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Record<string, unknown>) => api.createInspection(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inspections'] }),
+  });
+}
+
+export function useCompleteInspection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: Record<string, unknown> }) =>
+      api.completeInspection(v.id, v.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inspections'] });
+      qc.invalidateQueries({ queryKey: ['assets'] });
+    },
+  });
+}
+
+export function useDeleteInspection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteInspection(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inspections'] }),
+  });
+}

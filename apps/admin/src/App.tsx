@@ -5,6 +5,7 @@ import AccountsPage from './pages/AccountsPage';
 import AssetsPage from './pages/AssetsPage';
 import CustomersPage from './pages/CustomersPage';
 import DashboardPage from './pages/DashboardPage';
+import InspectionsPage from './pages/InspectionsPage';
 import LoginPage from './pages/LoginPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import SitesPage from './pages/SitesPage';
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/khach-hang" element={<CustomersPage />} />
         <Route path="/dia-diem" element={<SitesPage />} />
         <Route path="/thiet-bi" element={<AssetsPage />} />
+        <Route path="/kiem-tra" element={<InspectionsPage />} />
         <Route
           path="/cham-soc"
           element={
