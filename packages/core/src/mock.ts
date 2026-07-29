@@ -6,6 +6,9 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
+  Asset,
+  AssetListQuery,
+  AssetRepository,
   AuthRepository,
   Branch,
   BranchRepository,
@@ -13,16 +16,23 @@ import type {
   Customer,
   CustomerListQuery,
   CustomerRepository,
+  NewAsset,
   NewBranch,
   NewCustomer,
+  NewSite,
   NewUser,
   PageQuery,
   Paginated,
   RefreshSession,
   RepositoryBundle,
   Role,
+  Site,
+  SiteListQuery,
+  SiteRepository,
+  UpdateAsset,
   UpdateBranch,
   UpdateCustomer,
+  UpdateSite,
   UpdateUser,
   User,
   UserRepository,
@@ -308,16 +318,189 @@ class MockCustomerRepository implements CustomerRepository {
   }
 }
 
+function inBranch(branchId: string, scope: BranchScope): boolean {
+  return scope.allBranches || branchId === scope.branchId;
+}
+
+class MockSiteRepository implements SiteRepository {
+  constructor(private readonly store: Site[]) {}
+
+  async list(query: SiteListQuery): Promise<Paginated<Site>> {
+    const q = query.q?.toLowerCase();
+    const filtered = this.store
+      .filter(
+        (s) =>
+          inBranch(s.branchId, query.scope) &&
+          (!query.customerId || s.customerId === query.customerId) &&
+          (!query.type || s.type === query.type) &&
+          (!q || s.name.toLowerCase().includes(q) || (s.address ?? '').toLowerCase().includes(q)),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return paginate(filtered, query);
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<Site | null> {
+    const s = this.store.find((x) => x.id === id);
+    return s && inBranch(s.branchId, scope) ? s : null;
+  }
+
+  async create(input: NewSite): Promise<Site> {
+    const site: Site = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      customerId: input.customerId,
+      name: input.name,
+      code: input.code ?? null,
+      type: input.type ?? 'building',
+      address: input.address ?? null,
+      ward: input.ward ?? null,
+      district: input.district ?? null,
+      city: input.city ?? null,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+      notes: input.notes ?? null,
+      createdById: input.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(site);
+    return site;
+  }
+
+  async update(id: string, patch: UpdateSite, scope: BranchScope): Promise<Site | null> {
+    const s = this.store.find((x) => x.id === id);
+    if (!s || !inBranch(s.branchId, scope)) return null;
+    Object.assign(s, patch, { updatedAt: now() });
+    return s;
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+}
+
+class MockAssetRepository implements AssetRepository {
+  constructor(private readonly store: Asset[]) {}
+
+  async list(query: AssetListQuery): Promise<Paginated<Asset>> {
+    const q = query.q?.toLowerCase();
+    const filtered = this.store
+      .filter(
+        (a) =>
+          inBranch(a.branchId, query.scope) &&
+          (!query.siteId || a.siteId === query.siteId) &&
+          (!query.customerId || a.customerId === query.customerId) &&
+          (!query.category || a.category === query.category) &&
+          (!query.status || a.status === query.status) &&
+          (!query.dueBefore || (a.nextDueDate != null && a.nextDueDate <= query.dueBefore)) &&
+          (!q ||
+            a.name.toLowerCase().includes(q) ||
+            (a.serialNo ?? '').toLowerCase().includes(q) ||
+            a.qrCode.toLowerCase().includes(q)),
+      )
+      .sort((a, b) =>
+        query.sort === 'due'
+          ? (a.nextDueDate ?? '9999-99-99').localeCompare(b.nextDueDate ?? '9999-99-99')
+          : b.createdAt.localeCompare(a.createdAt),
+      );
+    return paginate(filtered, query);
+  }
+
+  async findById(id: string, scope: BranchScope): Promise<Asset | null> {
+    const a = this.store.find((x) => x.id === id);
+    return a && inBranch(a.branchId, scope) ? a : null;
+  }
+
+  async findByQr(qrCode: string, scope: BranchScope): Promise<Asset | null> {
+    const a = this.store.find((x) => x.qrCode === qrCode);
+    return a && inBranch(a.branchId, scope) ? a : null;
+  }
+
+  async create(input: NewAsset): Promise<Asset> {
+    const asset: Asset = {
+      id: randomUUID(),
+      branchId: input.branchId,
+      siteId: input.siteId,
+      customerId: input.customerId,
+      category: input.category,
+      name: input.name,
+      serialNo: input.serialNo ?? null,
+      qrCode: input.qrCode ?? `FC-${randomUUID().slice(0, 8).toUpperCase()}`,
+      manufacturer: input.manufacturer ?? null,
+      capacity: input.capacity ?? null,
+      manufactureDate: input.manufactureDate ?? null,
+      installedAt: input.installedAt ?? null,
+      lastInspectedAt: input.lastInspectedAt ?? null,
+      nextDueDate: input.nextDueDate ?? null,
+      status: input.status ?? 'active',
+      locationNote: input.locationNote ?? null,
+      photoUrl: input.photoUrl ?? null,
+      notes: input.notes ?? null,
+      createdById: input.createdById ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    this.store.push(asset);
+    return asset;
+  }
+
+  async update(id: string, patch: UpdateAsset, scope: BranchScope): Promise<Asset | null> {
+    const a = this.store.find((x) => x.id === id);
+    if (!a || !inBranch(a.branchId, scope)) return null;
+    Object.assign(a, patch, { updatedAt: now() });
+    return a;
+  }
+
+  async delete(id: string, scope: BranchScope): Promise<boolean> {
+    const i = this.store.findIndex((x) => x.id === id && inBranch(x.branchId, scope));
+    if (i < 0) return false;
+    this.store.splice(i, 1);
+    return true;
+  }
+
+  async bulkCreate(
+    context: { branchId: string; siteId: string; customerId: string },
+    rows: NewAsset[],
+  ): Promise<{ inserted: number; skipped: number; skippedRefs: string[] }> {
+    const seen = new Set(
+      this.store
+        .filter((a) => a.siteId === context.siteId)
+        .map((a) => a.serialNo)
+        .filter((v): v is string => !!v),
+    );
+    const skippedRefs: string[] = [];
+    let inserted = 0;
+    for (const row of rows) {
+      const serial = row.serialNo?.trim();
+      if (serial && seen.has(serial)) {
+        skippedRefs.push(serial);
+        continue;
+      }
+      if (serial) seen.add(serial);
+      await this.create({ ...row, ...context });
+      inserted += 1;
+    }
+    return { inserted, skipped: skippedRefs.length, skippedRefs };
+  }
+}
+
 /** Build a fresh mock bundle. Pass seed data for tests. */
 export function createMockRepositories(seed?: {
   users?: (User & { passwordHash: string })[];
   branches?: Branch[];
   customers?: Customer[];
+  sites?: Site[];
+  assets?: Asset[];
 }): RepositoryBundle {
   return {
     auth: new MockAuthRepository(),
     users: new MockUserRepository(seed?.users ?? []),
     branches: new MockBranchRepository(seed?.branches ?? []),
     customers: new MockCustomerRepository(seed?.customers ?? []),
+    sites: new MockSiteRepository(seed?.sites ?? []),
+    assets: new MockAssetRepository(seed?.assets ?? []),
   };
 }

@@ -8,6 +8,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   pgEnum,
@@ -160,5 +161,100 @@ export const customers = pgTable(
   (t) => [
     index('customers_branch_idx').on(t.branchId),
     index('customers_phone_idx').on(t.phone),
+  ],
+);
+
+// ── Sites & Assets (P2) ─────────────────────────────────────────────────────
+
+export const siteTypeEnum = pgEnum('site_type', [
+  'building',
+  'factory',
+  'restaurant',
+  'school',
+  'office',
+  'other',
+]);
+
+export const assetCategoryEnum = pgEnum('asset_category', [
+  'extinguisher',
+  'alarm_panel',
+  'detector',
+  'hydrant',
+  'sprinkler',
+  'emergency_light',
+  'hose',
+  'pump',
+  'other',
+]);
+
+export const assetStatusEnum = pgEnum('asset_status', [
+  'active',
+  'inactive',
+  'faulty',
+  'retired',
+  'pending',
+]);
+
+export const sites = pgTable(
+  'sites',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    code: text('code'),
+    type: siteTypeEnum('type').notNull().default('building'),
+    address: text('address'),
+    ward: text('ward'),
+    district: text('district'),
+    city: text('city'),
+    lat: doublePrecision('lat'),
+    lng: doublePrecision('lng'),
+    notes: text('notes'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [index('sites_branch_idx').on(t.branchId), index('sites_customer_idx').on(t.customerId)],
+);
+
+export const assets = pgTable(
+  'assets',
+  {
+    id,
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => branches.id, { onDelete: 'restrict' }),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    category: assetCategoryEnum('category').notNull().default('extinguisher'),
+    name: text('name').notNull(),
+    serialNo: text('serial_no'),
+    qrCode: text('qr_code').notNull(),
+    manufacturer: text('manufacturer'),
+    capacity: text('capacity'),
+    manufactureDate: date('manufacture_date', { mode: 'string' }),
+    installedAt: date('installed_at', { mode: 'string' }),
+    lastInspectedAt: date('last_inspected_at', { mode: 'string' }),
+    nextDueDate: date('next_due_date', { mode: 'string' }),
+    status: assetStatusEnum('status').notNull().default('active'),
+    locationNote: text('location_note'),
+    photoUrl: text('photo_url'),
+    notes: text('notes'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('assets_site_idx').on(t.siteId),
+    index('assets_branch_idx').on(t.branchId),
+    index('assets_next_due_idx').on(t.nextDueDate),
+    uniqueIndex('assets_qr_branch_idx').on(t.branchId, t.qrCode),
   ],
 );

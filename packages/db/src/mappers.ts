@@ -3,9 +3,9 @@
  * public shape (e.g. `User` never carries `passwordHash`).
  */
 
-import type { Branch, Customer, User } from '@firecare/types';
+import type { Asset, Branch, Customer, Site, User } from '@firecare/types';
 // Value import (not `import type`): the table objects back the `$inferSelect` row types.
-import { branches, customers, users } from './schema';
+import { assets, branches, customers, sites, users } from './schema';
 
 type BranchRow = typeof branches.$inferSelect;
 type UserRow = typeof users.$inferSelect;
@@ -68,6 +68,56 @@ export function toCustomer(row: CustomerRow): Customer {
     tags: row.tags,
     assignedStaffId: row.assignedStaffId,
     status: row.status,
+    notes: row.notes,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+type SiteRow = typeof sites.$inferSelect;
+type AssetRow = typeof assets.$inferSelect;
+
+export function toSite(row: SiteRow): Site {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    customerId: row.customerId,
+    name: row.name,
+    code: row.code,
+    type: row.type,
+    address: row.address,
+    ward: row.ward,
+    district: row.district,
+    city: row.city,
+    lat: row.lat,
+    lng: row.lng,
+    notes: row.notes,
+    createdById: row.createdById,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function toAsset(row: AssetRow): Asset {
+  return {
+    id: row.id,
+    branchId: row.branchId,
+    siteId: row.siteId,
+    customerId: row.customerId,
+    category: row.category,
+    name: row.name,
+    serialNo: row.serialNo,
+    qrCode: row.qrCode,
+    manufacturer: row.manufacturer,
+    capacity: row.capacity,
+    manufactureDate: row.manufactureDate,
+    installedAt: row.installedAt,
+    lastInspectedAt: row.lastInspectedAt,
+    nextDueDate: row.nextDueDate,
+    status: row.status,
+    locationNote: row.locationNote,
+    photoUrl: row.photoUrl,
     notes: row.notes,
     createdById: row.createdById,
     createdAt: row.createdAt,

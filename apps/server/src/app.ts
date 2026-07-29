@@ -16,10 +16,12 @@ import type { AppConfig } from './config';
 import { registerErrorHandling } from './lib/errors';
 import { installPrincipal } from './lib/principal';
 import { createTokenService } from './lib/tokens';
+import { registerAssetRoutes } from './routes/assets';
 import { registerAuthRoutes } from './routes/auth';
 import { registerBranchRoutes } from './routes/branches';
 import { registerCustomerRoutes } from './routes/customers';
 import { registerHealthRoutes } from './routes/health';
+import { registerSiteRoutes } from './routes/sites';
 import { registerUserRoutes } from './routes/users';
 
 /** `deps.repos` lets tests inject a seeded in-memory bundle (no DB, no network). */
@@ -51,6 +53,8 @@ export async function buildApp(
   registerUserRoutes(app, repos);
   registerBranchRoutes(app, repos);
   registerCustomerRoutes(app, repos);
+  registerSiteRoutes(app, repos);
+  registerAssetRoutes(app, repos);
 
   return app;
 }

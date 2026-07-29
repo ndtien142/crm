@@ -27,6 +27,8 @@ const CONFIG: AppConfig = {
 
 const BRANCH_A = 'aaaaaaaa-0000-0000-0000-000000000001';
 const BRANCH_B = 'bbbbbbbb-0000-0000-0000-000000000002';
+const CUST_A = 'cccccccc-0000-0000-0000-000000000001';
+const CUST_B = 'cccccccc-0000-0000-0000-000000000002';
 
 function branch(id: string, code: string, name: string): Branch {
   const ts = '2026-01-01T00:00:00.000Z';
@@ -110,8 +112,8 @@ beforeAll(async () => {
       mk('u-staff', 'staff@f.local', 'staff', BRANCH_A),
     ],
     customers: [
-      customer('c-a', BRANCH_A, 'Khách A', '0900000001'),
-      customer('c-b', BRANCH_B, 'Khách B', '0900000002'),
+      customer(CUST_A, BRANCH_A, 'Khách A', '0900000001'),
+      customer(CUST_B, BRANCH_B, 'Khách B', '0900000002'),
     ],
   });
   app = await buildApp(CONFIG, { repos });
@@ -226,7 +228,7 @@ describe('authorization + branch scoping', () => {
   it('hides other-branch records from staff (404, not 403)', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/customers/c-b',
+      url: `/api/customers/${CUST_B}`,
       headers: bearer(await token('staff@f.local')),
     });
     expect(res.statusCode).toBe(404);
@@ -310,5 +312,84 @@ describe('CSV import dedup', () => {
     const report = JSON.parse(res.body).data;
     expect(report.inserted).toBe(1);
     expect(report.skipped).toBe(2);
+  });
+});
+
+describe('sites & assets (P2)', () => {
+  it('staff creates a site under a branch customer, then an asset with an auto QR', async () => {
+    const t = await token('staff@f.local');
+
+    const siteRes = await app.inject({
+      method: 'POST',
+      url: '/api/sites',
+      headers: bearer(t),
+      payload: { customerId: CUST_A, name: 'Tòa nhà A1', type: 'building' },
+    });
+    expect(siteRes.statusCode).toBe(201);
+    const site = JSON.parse(siteRes.body).data;
+    expect(site.branchId).toBe(BRANCH_A);
+
+    const assetRes = await app.inject({
+      method: 'POST',
+      url: '/api/assets',
+      headers: bearer(t),
+      payload: {
+        siteId: site.id,
+        name: 'Bình bột 4kg',
+        category: 'extinguisher',
+        nextDueDate: '2026-01-01',
+      },
+    });
+    expect(assetRes.statusCode).toBe(201);
+    const asset = JSON.parse(assetRes.body).data;
+    expect(asset.qrCode).toMatch(/^FC-/); // auto-generated
+    expect(asset.siteId).toBe(site.id);
+    expect(asset.customerId).toBe(CUST_A); // derived from the site
+
+    // QR lookup resolves the device.
+    const qr = await app.inject({
+      method: 'GET',
+      url: `/api/assets/qr/${asset.qrCode}`,
+      headers: bearer(t),
+    });
+    expect(qr.statusCode).toBe(200);
+
+    // Due filter surfaces it (nextDueDate <= dueBefore).
+    const due = await app.inject({
+      method: 'GET',
+      url: '/api/assets?dueBefore=2026-06-01',
+      headers: bearer(t),
+    });
+    expect(JSON.parse(due.body).meta.total).toBeGreaterThanOrEqual(1);
+
+    // Bulk import de-dups by serial within the site.
+    const imp = await app.inject({
+      method: 'POST',
+      url: '/api/assets/import',
+      headers: bearer(t),
+      payload: {
+        siteId: site.id,
+        rows: [
+          { name: 'B1', serialNo: 'SN-1' },
+          { name: 'B2', serialNo: 'SN-2' },
+          { name: 'B3', serialNo: 'SN-2' },
+        ],
+      },
+    });
+    const report = JSON.parse(imp.body).data;
+    expect(report.inserted).toBe(2);
+    expect(report.skipped).toBe(1);
+  });
+
+  it('sites are branch-scoped and accountant is read-only', async () => {
+    const acc = await token('acc@f.local');
+    expect((await app.inject({ method: 'GET', url: '/api/sites', headers: bearer(acc) })).statusCode).toBe(200);
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/sites',
+      headers: bearer(acc),
+      payload: { customerId: CUST_A, name: 'X' },
+    });
+    expect(create.statusCode).toBe(403);
   });
 });

@@ -154,3 +154,100 @@ export const customerImportSchema = z.object({
     .min(1)
     .max(2000),
 });
+
+// ── Sites (địa điểm) ─────────────────────────────────────────────────────────
+
+const siteTypeSchema = z.enum(['building', 'factory', 'restaurant', 'school', 'office', 'other']);
+
+export const siteQuerySchema = pageQuerySchema.extend({
+  q: z.string().trim().min(1).optional(),
+  customerId: z.string().uuid().optional(),
+  type: siteTypeSchema.optional(),
+});
+
+export const createSiteSchema = z.object({
+  // The site inherits its branch from the customer; only the customer is named.
+  customerId: z.string().uuid(),
+  name: z.string().trim().min(1),
+  code: z.string().trim().optional(),
+  type: siteTypeSchema.default('building'),
+  address: z.string().trim().optional(),
+  ward: z.string().trim().optional(),
+  district: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
+  notes: z.string().trim().optional(),
+});
+
+export const updateSiteSchema = createSiteSchema.omit({ customerId: true }).partial();
+
+// ── Assets (thiết bị) ────────────────────────────────────────────────────────
+
+const assetCategorySchema = z.enum([
+  'extinguisher',
+  'alarm_panel',
+  'detector',
+  'hydrant',
+  'sprinkler',
+  'emergency_light',
+  'hose',
+  'pump',
+  'other',
+]);
+const assetStatusSchema = z.enum(['active', 'inactive', 'faulty', 'retired', 'pending']);
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải dạng YYYY-MM-DD');
+
+export const assetQuerySchema = pageQuerySchema.extend({
+  q: z.string().trim().min(1).optional(),
+  siteId: z.string().uuid().optional(),
+  customerId: z.string().uuid().optional(),
+  category: assetCategorySchema.optional(),
+  status: assetStatusSchema.optional(),
+  dueBefore: dateStr.optional(),
+  sort: z.enum(['recent', 'due']).optional(),
+});
+
+const assetBodyBase = {
+  category: assetCategorySchema.default('extinguisher'),
+  name: z.string().trim().min(1),
+  serialNo: z.string().trim().optional(),
+  qrCode: z.string().trim().optional(),
+  manufacturer: z.string().trim().optional(),
+  capacity: z.string().trim().optional(),
+  manufactureDate: dateStr.optional(),
+  installedAt: dateStr.optional(),
+  lastInspectedAt: dateStr.optional(),
+  nextDueDate: dateStr.optional(),
+  status: assetStatusSchema.optional(),
+  locationNote: z.string().trim().optional(),
+  photoUrl: z.string().url().optional(),
+  notes: z.string().trim().optional(),
+};
+
+export const createAssetSchema = z.object({
+  // Branch + customer are derived from the site.
+  siteId: z.string().uuid(),
+  ...assetBodyBase,
+});
+
+export const updateAssetSchema = z.object(assetBodyBase).partial();
+
+export const assetImportSchema = z.object({
+  siteId: z.string().uuid(),
+  rows: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1),
+        category: assetCategorySchema.optional(),
+        serialNo: z.string().trim().optional(),
+        manufacturer: z.string().trim().optional(),
+        capacity: z.string().trim().optional(),
+        manufactureDate: dateStr.optional(),
+        nextDueDate: dateStr.optional(),
+        locationNote: z.string().trim().optional(),
+      }),
+    )
+    .min(1)
+    .max(2000),
+});

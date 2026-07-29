@@ -50,3 +50,32 @@ ALTER TABLE branches
   ) STORED;
 
 CREATE INDEX IF NOT EXISTS branches_geog_idx ON branches USING gist (geog);
+
+-- ── Sites: accent-insensitive search + geography ────────────────────────────
+ALTER TABLE sites
+  ADD COLUMN IF NOT EXISTS search_text text
+  GENERATED ALWAYS AS (
+    immutable_unaccent(lower(
+      coalesce(name, '') || ' ' || coalesce(code, '') || ' ' || coalesce(address, '')
+    ))
+  ) STORED;
+CREATE INDEX IF NOT EXISTS sites_search_text_trgm_idx ON sites USING gin (search_text gin_trgm_ops);
+
+ALTER TABLE sites
+  ADD COLUMN IF NOT EXISTS geog geography(Point, 4326)
+  GENERATED ALWAYS AS (
+    CASE WHEN lat IS NOT NULL AND lng IS NOT NULL
+      THEN ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography
+    END
+  ) STORED;
+CREATE INDEX IF NOT EXISTS sites_geog_idx ON sites USING gist (geog);
+
+-- ── Assets: accent-insensitive search (name + serial + QR) ──────────────────
+ALTER TABLE assets
+  ADD COLUMN IF NOT EXISTS search_text text
+  GENERATED ALWAYS AS (
+    immutable_unaccent(lower(
+      coalesce(name, '') || ' ' || coalesce(serial_no, '') || ' ' || coalesce(qr_code, '')
+    ))
+  ) STORED;
+CREATE INDEX IF NOT EXISTS assets_search_text_trgm_idx ON assets USING gin (search_text gin_trgm_ops);

@@ -92,3 +92,67 @@ export interface Customer {
   createdAt: string;
   updatedAt: string;
 }
+
+// ── Sites (địa điểm / tòa nhà của khách) ─────────────────────────────────────
+
+export type SiteType = 'building' | 'factory' | 'restaurant' | 'school' | 'office' | 'other';
+
+export interface Site {
+  id: string;
+  branchId: string;
+  customerId: string;
+  name: string;
+  code: string | null;
+  type: SiteType;
+  address: string | null;
+  ward: string | null;
+  district: string | null;
+  city: string | null;
+  lat: number | null;
+  lng: number | null;
+  notes: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Assets (thiết bị PCCC) ───────────────────────────────────────────────────
+
+export type AssetCategory =
+  | 'extinguisher' // bình chữa cháy
+  | 'alarm_panel' // tủ trung tâm báo cháy
+  | 'detector' // đầu báo khói/nhiệt
+  | 'hydrant' // họng nước
+  | 'sprinkler' // đầu phun
+  | 'emergency_light' // đèn thoát hiểm/sự cố
+  | 'hose' // vòi/cuộn vòi
+  | 'pump' // máy bơm
+  | 'other';
+
+export type AssetStatus = 'active' | 'inactive' | 'faulty' | 'retired' | 'pending';
+
+export interface Asset {
+  id: string;
+  branchId: string;
+  siteId: string;
+  customerId: string;
+  category: AssetCategory;
+  name: string;
+  serialNo: string | null;
+  /** Human QR payload printed on the device tag (unique per branch). */
+  qrCode: string;
+  manufacturer: string | null;
+  capacity: string | null;
+  manufactureDate: string | null;
+  installedAt: string | null;
+  lastInspectedAt: string | null;
+  /** Next inspection/refill due — drives the alert/re-service engine (P3–P5). */
+  nextDueDate: string | null;
+  status: AssetStatus;
+  locationNote: string | null;
+  photoUrl: string | null;
+  notes: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -5,12 +5,17 @@
  */
 
 import type {
+  Asset,
+  AssetCategory,
+  AssetStatus,
   Branch,
   Customer,
   CustomerSource,
   CustomerStatus,
   CustomerType,
   Role,
+  Site,
+  SiteType,
   User,
 } from './models';
 
@@ -171,6 +176,93 @@ export interface CustomerRepository {
   ): Promise<{ inserted: number; skipped: number; skippedPhones: string[] }>;
 }
 
+// ── Sites ───────────────────────────────────────────────────────────────────
+
+export interface NewSite {
+  branchId: string;
+  customerId: string;
+  name: string;
+  code?: string | null;
+  type?: SiteType;
+  address?: string | null;
+  ward?: string | null;
+  district?: string | null;
+  city?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  notes?: string | null;
+  createdById?: string | null;
+}
+
+export type UpdateSite = Partial<Omit<NewSite, 'branchId' | 'customerId' | 'createdById'>>;
+
+export interface SiteListQuery extends PageQuery {
+  scope: BranchScope;
+  q?: string;
+  customerId?: string;
+  type?: SiteType;
+}
+
+export interface SiteRepository {
+  list(query: SiteListQuery): Promise<Paginated<Site>>;
+  findById(id: string, scope: BranchScope): Promise<Site | null>;
+  create(input: NewSite): Promise<Site>;
+  update(id: string, patch: UpdateSite, scope: BranchScope): Promise<Site | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+}
+
+// ── Assets ──────────────────────────────────────────────────────────────────
+
+export interface NewAsset {
+  branchId: string;
+  siteId: string;
+  customerId: string;
+  category: AssetCategory;
+  name: string;
+  serialNo?: string | null;
+  /** Auto-generated (FC-xxxx) when omitted; never nulled once set. */
+  qrCode?: string;
+  manufacturer?: string | null;
+  capacity?: string | null;
+  manufactureDate?: string | null;
+  installedAt?: string | null;
+  lastInspectedAt?: string | null;
+  nextDueDate?: string | null;
+  status?: AssetStatus;
+  locationNote?: string | null;
+  photoUrl?: string | null;
+  notes?: string | null;
+  createdById?: string | null;
+}
+
+export type UpdateAsset = Partial<Omit<NewAsset, 'branchId' | 'customerId' | 'createdById'>>;
+
+export interface AssetListQuery extends PageQuery {
+  scope: BranchScope;
+  q?: string;
+  siteId?: string;
+  customerId?: string;
+  category?: AssetCategory;
+  status?: AssetStatus;
+  /** ISO date — assets whose nextDueDate is on/before this (đến hạn). */
+  dueBefore?: string;
+  sort?: 'recent' | 'due';
+}
+
+export interface AssetRepository {
+  list(query: AssetListQuery): Promise<Paginated<Asset>>;
+  findById(id: string, scope: BranchScope): Promise<Asset | null>;
+  findByQr(qrCode: string, scope: BranchScope): Promise<Asset | null>;
+  create(input: NewAsset): Promise<Asset>;
+  update(id: string, patch: UpdateAsset, scope: BranchScope): Promise<Asset | null>;
+  delete(id: string, scope: BranchScope): Promise<boolean>;
+  /** Bulk import into one site; de-dups by serialNo within the site. */
+  bulkCreate(
+    context: { branchId: string; siteId: string; customerId: string },
+    rows: NewAsset[],
+  ): Promise<{ inserted: number; skipped: number; skippedRefs: string[] }>;
+}
+
 // ── The bundle ──────────────────────────────────────────────────────────────
 
 export interface RepositoryBundle {
@@ -178,4 +270,6 @@ export interface RepositoryBundle {
   users: UserRepository;
   branches: BranchRepository;
   customers: CustomerRepository;
+  sites: SiteRepository;
+  assets: AssetRepository;
 }
